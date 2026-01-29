@@ -1,0 +1,9 @@
+numpy
+pandas
+scikit-learn
+matplotlib
+plotly
+jupyter
+nbconvert
+folktables
+MCGrad[tutorials] @ git+https://github.com/facebookincubator/MCGrad.git

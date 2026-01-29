@@ -1,0 +1,457 @@
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+#
+# This source code is licensed under the CC-BY-NC 4.0 license found in the
+# LICENSE file in the root directory of this source tree.
+
+% === Core theory: multicalibration and universal adaptability ===
+
+@inproceedings{hebertjohnson2018multicalibration,
+  author    = {H{\'e}bert-Johnson, Ursula and Kim, Michael P. and Reingold, Omer and Rothblum, Guy N.},
+  title     = {Multicalibration: Calibration for the (Computationally-Identifiable) Masses},
+  booktitle = {Proceedings of the 35th International Conference on Machine Learning (ICML)},
+  year      = {2018},
+  pages     = {1939--1948},
+}
+
+@inproceedings{gopalan2022omnipredictors,
+  author    = {Gopalan, Parikshit and Kalai, Adam Tauman and Reingold, Omer and Sharan, Vatsal and Wieder, Udi},
+  title     = {Omnipredictors},
+  booktitle = {Proceedings of the 13th Innovations in Theoretical Computer Science Conference (ITCS)},
+  year      = {2022},
+  pages     = {79:1--79:21},
+}
+
+@article{kim2022universal,
+  author  = {Kim, Michael P. and Kern, Christoph and Goldwasser, Shafi and Kreuter, Frauke and Reingold, Omer},
+  title   = {Universal Adaptability: Target-Independent Inference that Competes with Propensity Scoring},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {119},
+  number  = {4},
+  year    = {2022},
+  pages   = {e2108097119},
+}
+
+@inproceedings{blasiok2023loss,
+  author    = {Gopalan, Parikshit and Hu, Lunjia and Kim, Michael P. and Reingold, Omer and Wieder, Udi},
+  title     = {Loss Minimization Through the Lens of Outcome Indistinguishability},
+  booktitle = {Proceedings of the 14th Innovations in Theoretical Computer Science Conference (ITCS)},
+  year      = {2023},
+  pages     = {60:1--60:20},
+}
+
+% === Quantification / prevalence estimation ===
+
+@article{saerens2002adjusting,
+  author  = {Saerens, Marco and Latinne, Patrice and Decaestecker, Christine},
+  title   = {Adjusting the Outputs of a Classifier to New a Priori Probabilities: A Simple Procedure},
+  journal = {Neural Computation},
+  volume  = {14},
+  number  = {1},
+  pages   = {21--41},
+  year    = {2002},
+}
+
+@article{gonzalez2017review,
+  author  = {Gonz{\'a}lez, Pablo and Casta{\~n}o, Alberto and Chawla, Nitesh V. and Coz, Juan Jos{\'e} Del},
+  title   = {A Review on Quantification Learning},
+  journal = {ACM Computing Surveys},
+  volume  = {50},
+  number  = {5},
+  pages   = {1--40},
+  year    = {2017},
+}
+
+@article{rogan1978estimating,
+  author  = {Rogan, Walter J. and Gladen, Beth},
+  title   = {Estimating Prevalence from the Results of a Screening Test},
+  journal = {American Journal of Epidemiology},
+  volume  = {107},
+  number  = {1},
+  pages   = {71--76},
+  year    = {1978},
+}
+
+% === Dataset shift ===
+
+@incollection{storkey2009dataset,
+  author    = {Storkey, Amos},
+  title     = {When Training and Test Sets Are Different: Characterizing Learning Transfer},
+  booktitle = {Dataset Shift in Machine Learning},
+  publisher = {MIT Press},
+  year      = {2009},
+  pages     = {3--28},
+}
+
+% === Calibration stability and domain adaptation ===
+
+% === Text-as-data methodology ===
+
+@book{grimmer2022text,
+  author    = {Grimmer, Justin and Roberts, Margaret E. and Stewart, Brandon M.},
+  title     = {Text as Data: A New Framework for Machine Learning and the Social Sciences},
+  publisher = {Princeton University Press},
+  year      = {2022},
+}
+
+% === Epidemiology / prevalence studies ===
+
+@article{pollan2020prevalence,
+  author  = {Poll{\'a}n, Marina and P{\'e}rez-G{\'o}mez, Beatriz and Pastor-Barriuso, Roberto and Oteo, Jes{\'u}s and Hern{\'a}n, Miguel A. and P{\'e}rez-Olmeda, Mayte and others},
+  title   = {Prevalence of {SARS-CoV-2} in {Spain} ({ENE-COVID}): A Nationwide, Population-Based Seroepidemiological Study},
+  journal = {The Lancet},
+  volume  = {396},
+  number  = {10250},
+  pages   = {535--544},
+  year    = {2020},
+}
+
+@article{neuhauser2022seroprevalence,
+  author  = {Neuhauser, Hannelore and Rosario, Angelika Schaffrath and Butschalowsky, Hans and Haller, Sebastian and Hoebel, Jens and Michel, Janine and others},
+  title   = {Nationally Representative Results on {SARS-CoV-2} Seroprevalence and Testing in {Germany} at the End of 2020},
+  journal = {Scientific Reports},
+  volume  = {12},
+  number  = {1},
+  pages   = {19492},
+  year    = {2022},
+}
+
+@article{hofmeister2019hepatitis,
+  author  = {Hofmeister, Megan G. and Rosenthal, Elizabeth M. and Barker, Laurie K. and Rosenberg, Eli S. and Barranco, Marissa A. and Hall, Eric W. and others},
+  title   = {Estimating Prevalence of Hepatitis {C} Virus Infection in the {United States}, 2013--2016},
+  journal = {Hepatology},
+  volume  = {69},
+  number  = {3},
+  pages   = {1020--1031},
+  year    = {2019},
+}
+
+@article{vangeepuram2021diabetes,
+  author  = {Vangeepuram, Nita and Liu, Bian and Chiu, Po-Hsiang and Wang, Linhua and Pandey, Gaurav},
+  title   = {Predicting Youth Diabetes Risk Using {NHANES} Data and Machine Learning},
+  journal = {Scientific Reports},
+  volume  = {11},
+  number  = {1},
+  pages   = {11212},
+  year    = {2021},
+}
+
+@article{metz2024hiv,
+  author  = {Metz, Melissa and others},
+  title   = {People Who Self-Reported Testing {HIV}-Positive but Tested {HIV}-Negative: A Multi-Country Puzzle of Data, Serology, and Ethics, 2015--2021},
+  journal = {Tropical Medicine and Infectious Disease},
+  volume  = {9},
+  number  = {9},
+  pages   = {220},
+  year    = {2024},
+}
+
+@article{edwards2025misclassification,
+  author  = {Edwards, Jessie K. and others},
+  title   = {Accounting for Misclassification of Cause of Death in Weighted Cumulative Incidence Functions for Causal Analyses},
+  journal = {Statistics in Medicine},
+  volume  = {44},
+  number  = {23--24},
+  pages   = {e70281},
+  year    = {2025},
+}
+
+@inproceedings{maletzke2018quantification,
+  author    = {Maletzke, Andr{\'e} G. and dos Reis, Denis M. and Cherman, Everton A. and Batista, Gustavo E. A. P. A.},
+  title     = {On the Need of Class Ratio Insensitive Drift Tests for Data Streams},
+  booktitle = {Proceedings of the 2nd International Workshop on Learning with Imbalanced Domains: Theory and Applications (LIDTA)},
+  year      = {2018},
+  pages     = {110--124},
+}
+
+% === LLM confidence elicitation ===
+
+@inproceedings{tian2023verbalized,
+  author    = {Tian, Katherine and Mitchell, Eric and Zhou, Allan and Sharma, Archit and Rafailov, Rafael and Yao, Huaxiu and Finn, Chelsea and Manning, Christopher D.},
+  title     = {Just Ask for Calibration: Strategies for Eliciting Calibrated Confidence Scores from Language Models Fine-Tuned with Human Feedback},
+  booktitle = {Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+  year      = {2023},
+}
+
+@inproceedings{wang2023selfconsistency,
+  author    = {Wang, Xuezhi and Wei, Jason and Schuurmans, Dale and Le, Quoc and Chi, Ed H. and Narang, Sharan and Chowdhery, Aakanksha and Zhou, Denny},
+  title     = {Self-Consistency Improves Chain of Thought Reasoning in Language Models},
+  booktitle = {Proceedings of the 11th International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+}
+
+@article{kadavath2022language,
+  author  = {Kadavath, Saurav and Conerly, Tom and Askell, Amanda and Henighan, Tom and Drain, Dawn and Perez, Ethan and Schiefer, Nicholas and Hatfield-Dodds, Zac and DaSilva, Nova and Elhage, Eli and others},
+  title   = {Language Models (Mostly) Know What They Know},
+  journal = {arXiv preprint arXiv:2207.05221},
+  year    = {2022},
+}
+
+@article{yang2023calibration,
+  author  = {Yang, Yahan and Dan, Soham and Roth, Dan and Lee, Insup},
+  title   = {On the Calibration of Multilingual Question Answering {LLMs}},
+  journal = {arXiv preprint arXiv:2311.08669},
+  year    = {2023},
+}
+
+@inproceedings{ren2025predicting,
+  author    = {Ren, Kevin and Cortes-Gomez, Santiago and Pati{\~n}o, Carlos Miguel and Joshi, Ananya and Lyu, Ruiqi and Tang, Jingjing and Turcan, Alistair and Yamin, Khurram and Wu, Steven and Wilder, Bryan},
+  title     = {Predicting Language Models' Success at Zero-Shot Probabilistic Prediction},
+  booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2025},
+  year      = {2025},
+  pages     = {18337--18363},
+}
+
+@article{oliveira2025calibration,
+  author  = {de Oliveira, Rodrigo and Garber, Matthew and Gwinnutt, James M. and Rashidi, Emaan and Hwang, Jwu-Hsuan and Gilmour, William and Nanavati, Jay and Zine El Abidine, Khaldoun and DeFilippo Mack, Christina},
+  title   = {A Study of Calibration as a Measurement of Trustworthiness of Large Language Models in Biomedical Natural Language Processing},
+  journal = {JAMIA Open},
+  volume  = {8},
+  number  = {4},
+  year    = {2025},
+}
+
+% === LLM zero-shot measurement ===
+
+@article{benoit2026llm,
+  author  = {Benoit, Kenneth and De Marchi, Scott and Laver, Conor and Laver, Michael and Ma, Jinshuai},
+  title   = {Using Large Language Models to Analyze Political Texts through Natural Language Understanding},
+  journal = {American Journal of Political Science},
+  year    = {2026},
+  doi     = {10.1111/ajps.70050},
+}
+
+@article{weidmann2026democracy,
+  author  = {Weidmann, Nils B. and Faulborn, Mats and Garcia, David},
+  title   = {Large Language Models Are Democracy Coders with Attitudes},
+  journal = {PS: Political Science \& Politics},
+  volume  = {59},
+  number  = {1},
+  pages   = {17--23},
+  year    = {2026},
+}
+
+@article{overos2024protest,
+  author  = {Overos, Henry David and Hlatky, Roman and Pathak, Ojashwi and Goers, Harriet and Gouws-Dewar, Jordan and Smith, Katy and Chew, Keith Padraic and Birnir, Johanna K. and Liu, Amy H.},
+  title   = {Coding with the Machines: Machine-Assisted Coding of Rare Event Data},
+  journal = {PNAS Nexus},
+  volume  = {3},
+  number  = {5},
+  pages   = {pgae165},
+  year    = {2024},
+}
+
+@article{mellon2024survey,
+  author  = {Mellon, Jonathan and Bailey, Jack and Scott, Ralph and Breckwoldt, James and Miori, Marta and Schmedeman, Phillip},
+  title   = {Do {AIs} Know What the Most Important Issue Is? Using Language Models to Code Open-Text Social Survey Responses at Scale},
+  journal = {Research \& Politics},
+  volume  = {11},
+  number  = {1},
+  pages   = {1--7},
+  year    = {2024},
+}
+
+@article{gilardi2023chatgpt,
+  author  = {Gilardi, Fabrizio and Alizadeh, Meysam and Kubli, Ma{\"e}l},
+  title   = {{ChatGPT} Outperforms Crowd-Workers for Text-Annotation Tasks},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {120},
+  number  = {30},
+  pages   = {e2305016120},
+  year    = {2023},
+}
+
+@article{halterman2025codebook,
+  author  = {Halterman, Andrew and Keith, Katherine A.},
+  title   = {Codebook {LLMs}: Evaluating {LLMs} as Measurement Tools for Political Science Concepts},
+  journal = {Political Analysis},
+  volume  = {34},
+  number  = {2},
+  pages   = {188--204},
+  year    = {2025},
+}
+
+@article{karjus2025mixed,
+  author  = {Karjus, Andres},
+  title   = {Machine-Assisted Quantitizing Designs: Augmenting Humanities and Social Sciences with Artificial Intelligence},
+  journal = {Humanities \& Social Sciences Communications},
+  year    = {2025},
+}
+
+@article{ziems2024llmcss,
+  author  = {Ziems, Caleb and Held, William and Shaikh, Omar and Chen, Jiaao and Zhang, Zhehao and Yang, Diyi},
+  title   = {Can Large Language Models Transform Computational Social Science?},
+  journal = {Computational Linguistics},
+  volume  = {50},
+  number  = {1},
+  pages   = {237--291},
+  year    = {2024},
+}
+
+@article{wu2023ideology,
+  author  = {Wu, Patrick Y. and Nagler, Jonathan and Tucker, Joshua A. and Messing, Solomon},
+  title   = {Large Language Models Can Be Used to Estimate the Latent Positions of Politicians},
+  journal = {arXiv preprint arXiv:2303.12057},
+  year    = {2023},
+}
+
+@article{burstein2025vaccination,
+  author  = {Burstein, Roy and Mafuta, Eric and Proctor, Joshua L.},
+  title   = {Large Language Models for Analyzing Open Text in Global Health Surveys: Why Children Are Not Accessing Vaccine Services in the {Democratic Republic of the Congo}},
+  journal = {International Health},
+  volume  = {17},
+  number  = {5},
+  pages   = {843--852},
+  year    = {2025},
+}
+
+@article{sushil2024clinical,
+  author  = {Sushil, Madhumita and Zack, Travis and Mandair, Divneet and Zheng, Zhiwei and Wali, Ahmed and Yu, Yan-Ning and Quan, Yuwei and Lituiev, Dmytro and Butte, Atul J.},
+  title   = {A Comparative Study of Large Language Model-Based Zero-Shot Inference and Task-Specific Supervised Classification of Breast Cancer Pathology Reports},
+  journal = {Journal of the American Medical Informatics Association},
+  volume  = {31},
+  number  = {10},
+  pages   = {2315--2327},
+  year    = {2024},
+}
+
+% === Clinical / palliative care ===
+
+@article{lee2025assessment,
+  title={Assessment of a zero-shot large language model in measuring documented goals-of-care discussions},
+  author={Lee, Robert Y and Li, Kevin S and Sibley, James and Cohen, Trevor and Lober, William B and Dotolo, Danae G and Kross, Erin K},
+  journal={Journal of Pain and Symptom Management},
+  year={2025},
+  publisher={Elsevier}
+}
+
+% === Art classification ===
+
+@article{tojima2025art,
+  author  = {Tojima, Tatsuya and Yoshida, Mitsuo},
+  title   = {Zero-Shot Classification of Art With Large Language Models},
+  journal = {IEEE Access},
+  volume  = {13},
+  pages   = {17426--17439},
+  year    = {2025},
+}
+
+% === Sentiment / public opinion via LLMs ===
+
+% === Ambiguity collapse ===
+
+@article{gurarieh2026ambiguity,
+  author  = {Gur-Arieh, Shira and Wang, Angelina and Fazelpour, Sina},
+  title   = {Ambiguity Collapse by {LLMs}: A Taxonomy of Epistemic Risks},
+  journal = {arXiv preprint arXiv:2603.05801},
+  year    = {2026},
+}
+
+% === Methodological: prediction-powered inference ===
+@article{angelopoulos2023prediction,
+  title={Prediction-powered inference},
+  author={Angelopoulos, Anastasios N and Bates, Stephen and Fannjiang, Clara and Jordan, Michael I and Zrnic, Tijana},
+  journal={Science},
+  volume={382},
+  number={6671},
+  pages={669--674},
+  year={2023},
+  publisher={American Association for the Advancement of Science}
+}
+
+% === Domain adaptation / causal transportability ===
+
+@article{bareinboim2016causal,
+  author  = {Bareinboim, Elias and Pearl, Judea},
+  title   = {Causal Inference and the Data-Fusion Problem},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {113},
+  number  = {27},
+  pages   = {7345--7352},
+  year    = {2016},
+}
+
+% === LLM-as-a-Judge ===
+
+@inproceedings{zheng2023judging,
+  author    = {Zheng, Lianmin and Chiang, Wei-Lin and Sheng, Ying and Zhuang, Siyuan and Wu, Zhanghao and Zhuang, Yonghao and Lin, Zi and Li, Zhuohan and Li, Dacheng and Xing, Eric P. and Zhang, Hao and Gonzalez, Joseph E. and Stoica, Ion},
+  title     = {Judging {LLM}-as-a-Judge with {MT-Bench} and {Chatbot Arena}},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2023},
+}
+
+@inproceedings{yuan2024selfrewarding,
+  author    = {Yuan, Weizhe and Pang, Richard Yuanzhe and Cho, Kyunghyun and Li, Xian and Sukhbaatar, Sainbayar and Xu, Jing and Weston, Jason},
+  title     = {Self-Rewarding Language Models},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning (ICML)},
+  year      = {2024},
+}
+
+% === Multicalibration algorithms ===
+
+@inproceedings{tax2026mcgrad,
+  author    = {Tax, Niek and Perini, Lorenzo and Linder, Fridolin and Haimovich, Daniel and Karamshuk, Dima and Okati, Nastaran and Vojnovic, Milan and Apostolopoulos, Pavlos Athanasios},
+  title     = {{MCGrad}: Multicalibration at Web Scale},
+  booktitle = {Proceedings of the 32nd ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD)},
+  year      = {2026},
+}
+
+@inproceedings{detommaso2024mcllm,
+  author    = {Detommaso, Gianluca and Bertran, Martin and Fogliato, Riccardo and Roth, Aaron},
+  title     = {Multicalibration for Confidence Scoring in {LLMs}},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning (ICML)},
+  year      = {2024},
+}
+
+% === Calibrate before use ===
+
+@inproceedings{zhao2021calibrate,
+  author    = {Zhao, Zihao and Wallace, Eric and Feng, Shi and Klein, Dan and Singh, Sameer},
+  title     = {Calibrate Before Use: Improving Few-Shot Performance of Language Models},
+  booktitle = {Proceedings of the 38th International Conference on Machine Learning (ICML)},
+  year      = {2021},
+}
+
+% === Community-specific learning ===
+
+@inproceedings{rajadesingan2020quick,
+  author    = {Rajadesingan, Ashwin and Resnick, Paul and Budak, Ceren},
+  title     = {Quick, Community-Specific Learning: How Distinctive Toxicity Norms Are Maintained in Political Subreddits},
+  booktitle = {Proceedings of the International AAAI Conference on Web and Social Media (ICWSM)},
+  volume    = {14},
+  number    = {1},
+  pages     = {557--568},
+  year      = {2020},
+}
+
+% === Calibrate-extrapolate ===
+
+@inproceedings{calibrateextrapolate2024,
+  author    = {Wu, Siqi and Resnick, Paul},
+  title     = {Calibrate-Extrapolate: Rethinking Prevalence Estimation with Black Box Classifiers},
+  booktitle = {Proceedings of the International AAAI Conference on Web and Social Media (ICWSM)},
+  volume    = {18},
+  number    = {1},
+  pages     = {1634--1647},
+  year      = {2024},
+}
+
+% === Comparative Agendas Project ===
+
+@article{baumgartner2006cap,
+  author  = {Baumgartner, Frank R. and Green-Pedersen, Christoffer and Jones, Bryan D.},
+  title   = {Comparative Studies of Policy Agendas},
+  journal = {Journal of European Public Policy},
+  volume  = {13},
+  number  = {7},
+  pages   = {959--974},
+  year    = {2006},
+}
+
+% === Llama 3 ===
+
+@article{llama2024herd,
+  author  = {Grattafiori, Aaron and Dubey, Abhimanyu and Jauhri, Abhinav and Pandey, Abhinav and Kadian, Abhishek and Al-Dahle, Ahmad and Letman, Aiesha and Mathur, Akhil and Schelten, Alan and Yang, Amy and Fan, Angela and others},
+  title   = {The {Llama} 3 Herd of Models},
+  journal = {arXiv preprint arXiv:2407.21783},
+  year    = {2024},
+}
