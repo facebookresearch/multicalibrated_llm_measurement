@@ -39,7 +39,7 @@ While theoretically sound, reliance on global calibration introduces a subtle bu
 
 To illustrate our theoretical results, we use a simulation with the following structure. We generate synthetic data with a binary covariate $X \in \{0, 1\}$ and binary outcome $Y \in \{0, 1\}$, where $P(Y=1|X=1) = 0.85$ and $P(Y=1|X=0) = 0.15$. A classifier produces probability estimates $\hat{p}$ that are systematically miscalibrated: underestimating by 10% when $X=0$ and overestimating by 10% when $X=1$. All calibration parameters are learned on a training distribution with $P(X=0) = 0.5$. We then evaluate estimation methods on test distributions where $P(X=0)$ ranges from 0.01 to 0.99, representing covariate shift. The marginal distribution $P(X)$ changes while the conditional $P(Y|X)$ remains fixed. The simulation is repeated 50 times.
 
-[TODO: Insert Figure 1 here]
+![Figure 1](images/figure1_simulation_bias.png)
 
 *Figure 1: Bias of the global prevalence estimate under covariate shift and three adjustment methods. a) no adjustment, averaging raw model predictions, b) averaging binarized model predictions from a (globally) calibrated threshold, c) averaging predictions calibrated on a calibration sample, d) Adjusted Count (Rogan-Gladen adjustment) with TPR and FPR estimated from a calibration sample.*
 
@@ -55,7 +55,7 @@ whenever the conditioning event has sufficient probability mass. In words, withi
 
 [TODO: Fill how this applies to measurement and illustrate with simulation]
 
-[TODO: Insert multicalibration simulation figure here]
+![Multicalibration simulation results](images/figure_multicalibration_comparison.png)
 
 # Empirical Application: Employment Prevalence Under Age Distribution Shift
 
@@ -87,7 +87,7 @@ All calibration parameters are estimated once on the original calibration set an
 
 ## Results
 
-[TODO: Insert Figure 2 here]
+![Figure 2](images/figure2_acs_age_shift.png)
 
 *Figure 2: Prevalence estimation bias (in percentage points) under synthetic age distribution shift, for in-distribution data (left) and out-of-distribution states (right).*
 
