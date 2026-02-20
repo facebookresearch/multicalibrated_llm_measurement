@@ -39,11 +39,11 @@ While theoretically sound, reliance on global calibration introduces a subtle bu
 
 To illustrate our theoretical results, we use a simulation with the following structure. We generate synthetic data with a binary covariate $X \in \{0, 1\}$ and binary outcome $Y \in \{0, 1\}$, where $P(Y=1|X=1) = 0.85$ and $P(Y=1|X=0) = 0.15$. A classifier produces probability estimates $\hat{p}$ that are systematically miscalibrated: underestimating by 10% when $X=0$ and overestimating by 10% when $X=1$. All calibration parameters are learned on a training distribution with $P(X=0) = 0.5$. We then evaluate estimation methods on test distributions where $P(X=0)$ ranges from 0.01 to 0.99, representing covariate shift. The marginal distribution $P(X)$ changes while the conditional $P(Y|X)$ remains fixed. The simulation is repeated 50 times.
 
-![Figure 1](images/figure1_simulation_bias.png)
+![Figure 1](images/figure_multicalibration_comparison.png)
 
-*Figure 1: Bias of the global prevalence estimate under covariate shift and three adjustment methods. a) no adjustment, averaging raw model predictions, b) averaging binarized model predictions from a (globally) calibrated threshold, c) averaging predictions calibrated on a calibration sample, d) Adjusted Count (Rogan-Gladen adjustment) with TPR and FPR estimated from a calibration sample.*
+*Figure 1: Average bias of prevalence estimates under covariate shift for five estimation methods: Uncalibrated, Classify & Count, Rogan-Gladen, Global Calibration, and Multicalibration. Only multicalibration maintains near-zero bias across all levels of distribution shift.*
 
-Figure 1 displays the results for (a) the raw simulated model prediction, (b) a classify-and-count procedure with a calibrated threshold, (c) probability calibrated model scores, and (d) the adjusted-count method (Rogan-Gladen). The y-axis shows the bias in global prevalence estimates under varying covariate shift, which is displayed on the x-axis. It can be seen that with zero distribution shift---the center of the figure---the raw score average is biased by about 7%. The classify-and-count, calibration, and the Rogan-Gladen estimators show no bias when there is no distribution shift, but their prevalence estimates are biased if the distribution shifts. The threshold based estimators (CC, and RG) are much more prone to extreme bias---in this sample up to 250%---as the covariate shift becomes more extreme. The calibrated scores are less susceptible to such bias amplification.
+Figure 1 displays the average bias across 50 simulation runs for all five estimation methods. The y-axis shows the bias in global prevalence estimates under varying covariate shift, which is displayed on the x-axis. It can be seen that with zero distribution shift---the center of the figure---the raw score average is biased by about 7%. The classify-and-count, calibration, and the Rogan-Gladen estimators show no bias when there is no distribution shift, but their prevalence estimates are biased if the distribution shifts. The threshold based estimators (CC, and RG) are much more prone to extreme bias---in this sample up to 250%---as the covariate shift becomes more extreme. The calibrated scores are less susceptible to such bias amplification. In contrast, the multicalibrated estimator maintains near-zero bias across the entire range of distribution shifts.
 
 ## Multicalibration
 
@@ -54,8 +54,6 @@ $$\left| \mathbb{E}[Y \mid f(X)=v, X \in G] - v \right| \le \alpha,$$
 whenever the conditioning event has sufficient probability mass. In words, within each subgroup and at each score level, the average observed outcome closely matches the predicted probability. This notion strengthens classical calibration, which requires the condition only over the entire population, by enforcing reliability across a rich family of subpopulations, potentially exponential in size.
 
 [TODO: Fill how this applies to measurement and illustrate with simulation]
-
-![Multicalibration simulation results](images/figure_multicalibration_comparison.png)
 
 # Empirical Application: Employment Prevalence Under Age Distribution Shift
 
@@ -93,18 +91,18 @@ All calibration parameters are estimated once on the original calibration set an
 
 Table 1 reports the bias of each estimation method across the four age-shift scenarios, for both the in-distribution and OOD settings.
 
-| Setting | Age Distribution | True Prev. | Raw Scores | CC | Rogan-Gladen | Isotonic | MCGrad |
-|---------|-----------------|-----------|-----------|-----|-------------|----------|--------|
-| In-Dist | Original | 46.0% | $-$0.31pp | $-$0.07pp | +0.26pp | $-$0.30pp | $-$0.27pp |
-| In-Dist | Young-skewed | 12.8% | +1.93pp | +2.47pp | $-$12.82pp | +2.04pp | $-$0.11pp |
-| In-Dist | Old-skewed | 16.8% | +7.23pp | $-$6.62pp | $-$16.77pp | +6.65pp | +0.22pp |
-| In-Dist | Bimodal | 21.1% | +4.57pp | $-$1.50pp | $-$18.62pp | +4.33pp | +0.12pp |
-| OOD | Original | 45.1% | +1.15pp | +1.40pp | +2.12pp | +1.17pp | +1.35pp |
-| OOD | Young-skewed | 13.0% | +2.93pp | +3.73pp | $-$12.96pp | +3.08pp | +0.88pp |
-| OOD | Old-skewed | 16.0% | +8.47pp | $-$5.64pp | $-$15.97pp | +7.91pp | +1.01pp |
-| OOD | Bimodal | 20.8% | +5.91pp | +0.09pp | $-$16.14pp | +5.69pp | +1.13pp |
+| Setting | Age Dist.    | True Prev. | Raw Scores | CC      | Rogan-Gladen | Isotonic | MCGrad  |
+|---------|--------------|------------|------------|---------|--------------|----------|---------|
+| In-Dist | Original     | 46.0%      | -0.31      | -0.07   | +0.26        | -0.30    | -0.27   |
+| In-Dist | Young-skewed | 12.8%      | +1.93      | +2.47   | -12.82       | +2.04    | -0.11   |
+| In-Dist | Old-skewed   | 16.8%      | +7.23      | -6.62   | -16.77       | +6.65    | +0.22   |
+| In-Dist | Bimodal      | 21.1%      | +4.57      | -1.50   | -18.62       | +4.33    | +0.12   |
+| OOD     | Original     | 45.1%      | +1.15      | +1.40   | +2.12        | +1.17    | +1.35   |
+| OOD     | Young-skewed | 13.0%      | +2.93      | +3.73   | -12.96       | +3.08    | +0.88   |
+| OOD     | Old-skewed   | 16.0%      | +8.47      | -5.64   | -15.97       | +7.91    | +1.01   |
+| OOD     | Bimodal      | 20.8%      | +5.91      | +0.09   | -16.14       | +5.69    | +1.13   |
 
-*Table 1: Prevalence estimation bias (percentage points) under synthetic age distribution shift.*
+*Table 1: Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift.*
 
 With no age shift (Original), all methods produce approximately unbiased estimates. Under age distribution shift, however, the methods diverge sharply.
 
