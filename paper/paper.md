@@ -1,7 +1,15 @@
 ---
-title: "The Crucial Role of Multicalibration in Model-based Prevalence Measurement"
+title: "Multicalibration Is Necessary for Unbiased Model-Based Prevalence Estimation"
 bibliography: references.bib
 ---
+
+## Significance
+
+Researchers increasingly use AI systems---including large language models---as measurement devices to estimate how common a phenomenon is in a population. A critical but overlooked problem arises when the target population differs from the one on which the device was validated: standard calibration methods produce biased prevalence estimates. We show that multicalibration---requiring a device to be accurate not just on average but across all relevant subgroups---is the necessary and sufficient condition for unbiased prevalence estimation under population shift. Our result, confirmed by simulation and empirical application to U.S. employment data, implies that the rapidly growing body of research using AI for measurement is vulnerable to systematic bias unless multicalibration is enforced.
+
+## Abstract
+
+Estimating the prevalence of a category in a population using imperfect measurement devices---diagnostic tests, classifiers, or large language models---is fundamental to science, public health, and platform governance. Standard approaches correct for known device error rates, but assume these rates remain stable across populations. We show this assumption fails under covariate shift: when the composition of the target population differs from the calibration population, globally calibrated devices produce biased prevalence estimates. We prove that multicalibration---calibration conditional on all relevant subgroups---is both necessary and sufficient for unbiased prevalence estimation under arbitrary covariate shift, connecting recent theory from algorithmic fairness to a longstanding problem in measurement. A simulation study demonstrates that standard methods (Classify & Count, Rogan-Gladen adjustment, isotonic regression) exhibit bias growing with the magnitude of distribution shift, while a multicalibrated estimator maintains near-zero bias throughout. In an empirical application using the American Community Survey, we estimate employment prevalence under synthetic age distribution shifts across 14 U.S. states. Standard methods show bias of 2--19 percentage points; a multicalibrated predictor reduces bias to under 1.2 percentage points in all scenarios. These results have immediate implications for the expanding use of AI systems as zero-shot measurement devices, where extrapolation to new populations is the primary purpose.
 
 # Introduction
 
@@ -15,83 +23,57 @@ We propose multicalibration as the necessary and sufficient condition for accura
 
 We review existing approaches to the quantification problem, connect the quantification task to the broader theory of domain adaptation via multicalibration, demonstrate the need for multicalibration to achieve unbiased estimates of prevalence in out-of-domain settings, and apply those insights to a few real-world datasets.
 
-# AI Systems as Measurement Devices
+# Results
 
-[TODO: Explicit review, maybe split into application papers and methodology papers]
+## Standard calibration methods fail under covariate shift
 
-# Calibrated Measurement Devices are Biased under Distribution Shift
+Consider a binary outcome $Y \in \{0, 1\}$, features $X$, and a device $h(X) \in [0,1]$ producing probabilistic predictions. The goal is to estimate the population prevalence $\pi = P(Y=1)$ in a target population using only the device's outputs. We assume that the causal direction is $X \to Y$, so that $P(Y|X)$ is stable across populations while the marginal $P(X)$ may shift---the standard covariate shift assumption [@wu2024stable]. This is the typical setting for measurement: features (demographics, text content, patient characteristics) causally influence outcomes (employment, attitudes, diagnoses), and applying a device to a new population changes the mix of features but not the underlying feature-outcome relationships.
 
-Assume a binary problem with outcome $y \in \{0, 1\}$ and a set of relevant features $X$. The researcher relies on an imperfect device, $h(X)$, such as an AI system, diagnostic test, a human annotator, or a machine learning classifier. The task of "quantification" is to estimate the true prevalence, $P(y=1)$, in a target population using only the device's outputs. We assume that the causal direction of the data generating process is $X \to Y$ and that $P(Y|X)$ is stable (see @wu2024stable for an extensive discussion of these assumptions). It is well understood that naively averaging the model's predictions will lead to biased estimates of prevalence [@gonzalez2017review]. Several methods are commonly used to adjust or *calibrate* a model to produce unbiased estimates. In this section, we will explore some of these methods and demonstrate how they fail if the target population has a different distribution of features $X$ (covariate or mix-shift).
+A device is *globally calibrated* if $\mathbb{E}[Y \mid h(X) = p] = p$ for all prediction values $p$. Under global calibration, $\mathbb{E}[h(X)] = \mathbb{E}[Y] = \pi$, so the sample mean of predictions is an unbiased prevalence estimate. However, global calibration is a property of a *specific* population. A device calibrated on one population need not be calibrated on another, even under covariate shift with stable $P(Y|X)$.
 
-## Existing Calibration Approaches
+The failure mechanism is straightforward. Suppose the population consists of subgroups indexed by $g$, with sizes $w_g$ and group-specific calibration errors $\epsilon_g = \mathbb{E}[h(X) - Y \mid G=g]$. Global calibration requires only that these errors cancel on average: $\sum_g w_g \epsilon_g = 0$. Under covariate shift, the weights change to $w_g^*$, and the bias in the prevalence estimate becomes $\sum_g w_g^* \epsilon_g$, which is generally nonzero unless every $\epsilon_g = 0$. Crucially, a device can be perfectly globally calibrated---with errors that precisely cancel in the training population---while being substantially miscalibrated on every individual subgroup.
 
-The most intuitive approach, "Classify & Count," simply tallies the device's positive predictions. Such predictions are obtained by thresholding if the model produces a continuous score. For many AI systems that produce natural language output a binary (e.g. yes/no) answer is the native output. However, this method is fundamentally flawed; even highly accurate devices yield biased estimates whenever the false positive and false negative rates are non-zero and uncorrected. To address this, the quantification literature has historically relied on error correction methods, such as the "Adjusted Count" (AC) [@rogan1978estimating]. These methods use a classifier's fixed error rates (TPR and FPR) estimated from training data to invert the confusion matrix and recover the true prevalence [@gonzalez2017review].
+This failure applies to all standard methods. *Classify & Count* binarizes predictions at a threshold $\tau$ and reports the positive fraction; the threshold is chosen to match true prevalence on calibration data, but this correspondence breaks under shift. The *Adjusted Count* (Rogan-Gladen) estimator $\hat{\pi} = (\hat{p} - \text{FPR})/(\text{TPR} - \text{FPR})$ uses sensitivity and specificity from calibration data [@rogan1978estimating]. These error rates are weighted averages of group-specific rates; when group proportions shift, the learned rates no longer match the target population's. The ratio estimator further amplifies errors when $\text{TPR} - \text{FPR}$ is small. The same argument applies to calibration approaches using stable error rates such as the Calibrate-Extrapolate framework [@calibrateextrapolate2024; @wu2024stable]. *Isotonic regression* and other global calibration methods learn a single mapping from scores to probabilities, which reflects the calibration population's composition and need not hold elsewhere.
 
-Adjusted Count is a *calibration* technique. If a device is perfectly calibrated (i.e., its predicted probabilities match empirical frequencies), averaging its predictions yields an unbiased prevalence estimate. Reformulating Adjusted Count, we can treat the device's classifications as real numbers rather than discrete predicted values $\{0,1\}$, which correspond to the prevalence within each predicted class. Positively classified examples are scored by the TPR and negatively classified examples are scored by $1 - \text{FPR}$. These scores satisfy the definition of calibration that $E[y \mid \hat{y}] = y$. The Adjusted Count (Rogan-Gladen) estimate is equivalent to the mean of these scores.
-
-A prediction $\hat{y}$ is perfectly calibrated if and only if $P(y = 1 \mid \hat{y} = p) = p$, where $p$ is the true underlying probability. Intuitively, for all $\hat{y} = 0.8$, we expect that 80% of them have 1 as a label.
-
-Corrections such as AC rely on a strict and often unrealistic assumption: they assume that while the class prevalence $P(y)$ may change, the distribution of features within each class, $P(X|y)$, remains constant between the training and target populations. This assumption of "Feature Stability" fails in most real-world out-of-distribution (OOD) settings. For example, if a device is applied to a specific demographic subgroup or a future time period, the features characterizing the positive class often shift, altering the device's error rates and rendering the standard correction invalid [@wu2024stable]. This can be demonstrated for AC. Consider a population consisting of two groups, indexed by $i$, of sizes $\{k, 1-k\}$. Each group is defined by a prevalence, $p_i$, and error rates $\text{FPR}_i$ and $\text{FNR}_i$. The apparent overall FPR and FNR of the population is a weighted average of the error rates for the two groups. In the presence of a "mix shift" that changes the relative sizes of these groups $\{k^*, 1-k^*\}$, the learned TPR and TNR will no longer be an appropriately weighted average of the target population group-level error rates, $\{\text{TPR}^*, \text{TNR}^*\}$. Estimated prevalence---corrected by an inappropriate global confusion matrix---will be biased. Despite achieving "calibration" in the original population, this learned calibration does not always hold.
-
-[TODO: Paragraph that connects this to other methods like @wu2024stable, King, and other quantification work, showing/arguing the same failure mode holds]
-
-[TODO: Something about why we should care about bias (versus variance)]
-
-While theoretically sound, reliance on global calibration introduces a subtle but critical failure mode. A device can be *globally* calibrated on a training set---accurate on average---while being grossly *miscalibrated* on specific subgroups, even within the training distribution. When researchers apply such a model to a new domain---whether a specific demographic subset, a new geographic region, or a future time period---the global calibration curve often fails to hold. This failure occurs because most real-world distribution shifts are effectively changes in the composition of the population. If the device is miscalibrated on the underlying subgroups that make up the population, any shift in their proportions will bias the aggregate estimate. This phenomenon, which we term *mis-multicalibration*, violates the Calibration Stability assumption locally and negatively impacts generalization. Consequently, neither standard error-correction methods (which assume stable features) nor standard calibration methods (which assume stable global calibration) can yield unbiased estimates under shift.
-
-To illustrate our theoretical results, we use a simulation with the following structure. We generate synthetic data with a binary covariate $X \in \{0, 1\}$ and binary outcome $Y \in \{0, 1\}$, where $P(Y=1|X=1) = 0.85$ and $P(Y=1|X=0) = 0.15$. A classifier produces probability estimates $\hat{p}$ that are systematically miscalibrated: underestimating by 10% when $X=0$ and overestimating by 10% when $X=1$. All calibration parameters are learned on a training distribution with $P(X=0) = 0.5$. We then evaluate estimation methods on test distributions where $P(X=0)$ ranges from 0.01 to 0.99, representing covariate shift. The marginal distribution $P(X)$ changes while the conditional $P(Y|X)$ remains fixed. The simulation is repeated 50 times.
+**Simulation.** We illustrate these failures with a controlled simulation. We generate data with a binary covariate $X \in \{0,1\}$ and binary outcome $Y$, where $P(Y=1|X=1) = 0.85$ and $P(Y=1|X=0) = 0.15$. A classifier produces systematically biased predictions: 10% underestimation when $X=0$ and 10% overestimation when $X=1$. All calibration parameters are learned on a balanced training distribution ($P(X=0) = 0.5$). We then evaluate prevalence estimates on test distributions where $P(X=0)$ ranges from 0.01 to 0.99, repeating 50 times (details in Materials and Methods).
 
 ![Figure 1](images/figure_multicalibration_comparison.png)
 
-*Figure 1: Average bias of prevalence estimates under covariate shift for five estimation methods: Uncalibrated, Classify & Count, Rogan-Gladen, Global Calibration, and Multicalibration. Only multicalibration maintains near-zero bias across all levels of distribution shift.*
+*Figure 1: Average bias (%) of prevalence estimates under covariate shift for five methods across 50 simulation runs. Only multicalibration maintains near-zero bias across all levels of distribution shift.*
 
-Figure 1 displays the average bias across 50 simulation runs for all five estimation methods. The y-axis shows the bias in global prevalence estimates under varying covariate shift, which is displayed on the x-axis. It can be seen that with zero distribution shift---the center of the figure---the raw score average is biased by about 7%. The classify-and-count, calibration, and the Rogan-Gladen estimators show no bias when there is no distribution shift, but their prevalence estimates are biased if the distribution shifts. The threshold based estimators (CC, and RG) are much more prone to extreme bias---in this sample up to 250%---as the covariate shift becomes more extreme. The calibrated scores are less susceptible to such bias amplification. In contrast, the multicalibrated estimator maintains near-zero bias across the entire range of distribution shifts.
+Figure 1 shows the results. At the training distribution (center), all methods except the uncalibrated baseline produce approximately unbiased estimates. As the distribution shifts, the methods diverge. Classify & Count and Rogan-Gladen show rapidly growing bias, exceeding $\pm40\%$ at extreme shifts. The Rogan-Gladen estimator is particularly unstable: its ratio structure amplifies estimation errors, producing bias that exceeds the other methods by an order of magnitude. Global calibration shows more moderate but still substantial bias (up to $\pm15\%$). The uncalibrated baseline, already biased at the center due to the systematic miscalibration, shows additional shift-dependent bias. In contrast, the multicalibrated estimator maintains near-zero bias across the entire range of distribution shifts.
 
-## Multicalibration
+## Multicalibration guarantees unbiased prevalence estimation
 
-To guarantee accurate quantification in out-of-domain settings, a device must satisfy multicalibration: it must be calibrated not just on average, but simultaneously across all practically relevant subpopulations. By ensuring the device is reliable on these "atomic" components, multicalibration provides robustness not just for subsetting, but for generalizing to any future distribution composed of these groups [@gopalan2022omnipredictors]. Multicalibration was initially introduced as a fairness criterion [e.g., @hebertjohnson2018multicalibration; @blasiok2023loss] and a growing body of research showed its relevance to several aspects of model performance and robustness. Formally, let $X$ denote features, $Y \in \{0,1\}$ an outcome, and $f(X) \in [0,1]$ a predictor interpreted as a probability. Given a collection $\mathcal{G}$ of subgroups $G \subseteq \mathcal{X}$ (for example, groups defined by demographic attributes or by arbitrary computable functions of $X$), $f$ is said to be $\alpha$-multicalibrated with respect to $\mathcal{G}$ if, for every group $G \in \mathcal{G}$ and every prediction value $v$ used by the model, the conditional expectation satisfies
+The simulation motivates the question: what property of a device is *sufficient* to guarantee unbiased prevalence estimation under arbitrary covariate shift? The answer is multicalibration.
 
-$$\left| \mathbb{E}[Y \mid f(X)=v, X \in G] - v \right| \le \alpha,$$
+A predictor $f(X)$ is *$\alpha$-multicalibrated* with respect to a collection of subgroups $\mathcal{G}$ if, for every group $G \in \mathcal{G}$ and every prediction value $v$:
 
-whenever the conditioning event has sufficient probability mass. In words, within each subgroup and at each score level, the average observed outcome closely matches the predicted probability. This notion strengthens classical calibration, which requires the condition only over the entire population, by enforcing reliability across a rich family of subpopulations, potentially exponential in size.
+$$\left| \mathbb{E}[Y \mid f(X) = v, X \in G] - v \right| \le \alpha,$$
 
-[TODO: Fill how this applies to measurement and illustrate with simulation]
+whenever the conditioning event has sufficient probability mass [@hebertjohnson2018multicalibration]. This strengthens global calibration by requiring accuracy not just on average, but within each subgroup at each score level.
 
-# Empirical Application: Employment Prevalence Under Age Distribution Shift
+The connection to prevalence estimation is direct. If $f$ is multicalibrated with respect to $\mathcal{G}$, then $\mathbb{E}[f(X) \mid X \in G] \approx \mathbb{E}[Y \mid X \in G]$ for every $G \in \mathcal{G}$. Under covariate shift---where only $P(X)$ changes while $P(Y|X)$ remains stable---the law of iterated expectations gives:
 
-The simulation study above uses a stylized data-generating process to demonstrate the theoretical failure mode. We now show that the same phenomenon arises in practice, using real survey data and a realistic machine learning pipeline.
+$$\mathbb{E}^*[f(X)] = \sum_g w_g^* \cdot \mathbb{E}[f(X) \mid G=g] \approx \sum_g w_g^* \cdot \mathbb{E}[Y \mid G=g] = \mathbb{E}^*[Y] = \pi^*.$$
 
-## Data and Setup
+Because multicalibration ensures predictions are correct *within each subgroup*, the average of predictions tracks the true prevalence under *any* reweighting of those subgroups. This is the "Universal Adaptability" result of @kim2022universal: a multicalibrated predictor competes with propensity scoring for arbitrary target distributions, without requiring knowledge of the shift.
 
-We use the American Community Survey (ACS), a large-scale annual survey conducted by the U.S. Census Bureau. The prediction task is binary employment status (employed vs. not employed), with 16 sociodemographic features including age, education, marital status, disability status, citizenship, and military service. We load data from eight geographically diverse training states (TX, MI, PA, OH, IL, GA, NC, VA) across survey years 2016--2018, yielding approximately 3 million observations. Six additional states (CA, NY, FL, WA, AZ, CO) are held out for out-of-distribution (OOD) evaluation.
+Returning to the framework from the previous section: global calibration only ensures $\sum_g w_g \epsilon_g = 0$ for the training weights $w_g$. Multicalibration ensures $\epsilon_g \approx 0$ for each subgroup individually, making the estimate robust to arbitrary changes in $w_g$. This is also a *necessary* condition: if any $\epsilon_g \neq 0$, there exists a target distribution (one that overweights group $g$) under which the prevalence estimate is biased.
 
-A logistic regression classifier is trained on 1.5 million observations. The remaining in-distribution data is split into a calibration set ($n \approx 644{,}000$) and a test set ($n \approx 920{,}000$). We fit two post-hoc calibration methods on the calibration set:
+The requirement is not merely theoretical. Practical post-hoc multicalibration algorithms exist [@hebertjohnson2018multicalibration; @gopalan2022omnipredictors] and can be applied to any base predictor---including LLMs and black-box classifiers---by iteratively correcting predictions on subgroups where they are miscalibrated. The simulation in Figure 1 confirms this: the multicalibrated estimator, which learns additive corrections for each stratum of $X$, achieves near-zero bias regardless of the target distribution's composition.
 
-1. **Isotonic Regression** --- a standard global calibration method that learns a monotone mapping from predicted scores to calibrated probabilities.
-2. **MCGrad** --- a multicalibration algorithm that iteratively corrects predictions to achieve calibration conditional on subgroups defined by both categorical features (marital status, disability, citizenship, etc.) and numerical features (age, education level).
+## Empirical application: employment prevalence under age distribution shift
 
-We compare prevalence estimates from five methods: raw (uncalibrated) scores, Classify & Count with a prevalence-matched threshold, the Rogan-Gladen adjustment, Isotonic Regression, and MCGrad.
+We validate these results using the American Community Survey (ACS), a large-scale annual survey conducted by the U.S. Census Bureau. The prediction task is binary employment status, with 16 sociodemographic features including age, education, marital status, disability status, and citizenship.
 
-## Synthetic Age Distribution Shift
+**Setup.** We train a logistic regression classifier on data from eight U.S. states (TX, MI, PA, OH, IL, GA, NC, VA) across 2016--2018, totaling approximately 1.5 million training observations. The remaining in-distribution data is split into a calibration set ($n \approx 644{,}000$) and a test set ($n \approx 920{,}000$). Six additional states (CA, NY, FL, WA, AZ, CO) are held out for out-of-distribution (OOD) evaluation. We fit two post-hoc calibration methods on the calibration set: isotonic regression (global calibration) and MCGrad, a multicalibration algorithm that enforces calibration conditional on subgroups defined by both categorical and numerical features. We compare five prevalence estimation methods: raw (uncalibrated) scores, Classify & Count with a prevalence-matched threshold, Rogan-Gladen adjustment, isotonic regression, and MCGrad.
 
-Employment rates vary dramatically by age: approximately 47% for ages 16--24, 76% for ages 25--54, 61% for ages 55--64, and only 17% for ages 65 and older. This 30--40 percentage point variation across age groups makes age an ideal dimension along which to construct meaningful distribution shifts.
-
-We create synthetic target populations by resampling the test data with different age distributions:
-
-- **Original**: no resampling (baseline).
-- **Young-skewed**: heavily oversamples ages 16--30, producing a population with mean age $\approx 10$ and true employment rate of 12.8%.
-- **Old-skewed**: heavily oversamples ages 60+, producing a population with mean age $\approx 77$ and true employment rate of 16.8%.
-- **Bimodal**: oversamples both young and old, undersamples the middle, with true employment rate of 21.1%.
-
-All calibration parameters are estimated once on the original calibration set and held fixed across scenarios.
-
-## Results
+**Age distribution shift.** Employment rates vary dramatically by age: approximately 47% for ages 16--24, 76% for ages 25--54, 61% for ages 55--64, and 17% for ages 65+. This makes age an ideal dimension along which to construct meaningful distribution shifts. We create synthetic target populations by resampling test data with shifted age distributions: young-skewed (oversampling ages 16--30), old-skewed (oversampling ages 60+), and bimodal (oversampling both tails). The resulting populations have true employment rates ranging from 12.8% to 46.0%. All calibration parameters are estimated once on the original calibration set and held fixed across scenarios.
 
 ![Figure 2](images/figure2_acs_age_shift.png)
 
-*Figure 2: Prevalence estimation bias (in percentage points) under synthetic age distribution shift, for in-distribution data (left) and out-of-distribution states (right).*
-
-Table 1 reports the bias of each estimation method across the four age-shift scenarios, for both the in-distribution and OOD settings.
+*Figure 2: Prevalence estimation bias (percentage points) under synthetic age distribution shift, for in-distribution data (left) and out-of-distribution states (right).*
 
 | Setting | Age Dist.    | True Prev. | Raw Scores | CC      | Rogan-Gladen | Isotonic | MCGrad  |
 |---------|--------------|------------|------------|---------|--------------|----------|---------|
@@ -106,90 +88,32 @@ Table 1 reports the bias of each estimation method across the four age-shift sce
 
 *Table 1: Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift.*
 
-With no age shift (Original), all methods produce approximately unbiased estimates. Under age distribution shift, however, the methods diverge sharply.
+**Results.** With no age shift, all methods produce approximately unbiased estimates (Table 1). Under shift, the methods diverge sharply.
 
-The Rogan-Gladen adjustment exhibits catastrophic failure, with bias reaching $-$12.8 to $-$18.6 percentage points in the in-distribution setting---effectively estimating zero or negative prevalence. This occurs because the TPR and FPR, estimated on the original age distribution, become invalid when the age mix shifts.
+Rogan-Gladen exhibits catastrophic failure, with bias of -12.8 to -18.6 percentage points in the in-distribution setting---effectively estimating zero or negative prevalence when the true rate is 13--21%. This occurs because TPR and FPR, estimated on the original age distribution, become invalid when the age mix shifts. Isotonic regression and raw scores show substantial bias of 2--8 percentage points: their global calibration curve, accurate on average in the training distribution, no longer reflects the true relationship when particular age groups are over- or under-represented. Classify & Count shows bias of up to 6.6 percentage points as the learned threshold loses its validity.
 
-Isotonic Regression and raw scores show substantial bias of 2--7 percentage points under shift. Because these methods learn a global mapping from scores to probabilities, they cannot account for the fact that the age composition of the target population has changed. The global calibration curve, which was accurate on average in the training distribution, no longer reflects the true relationship when particular age groups are over- or under-represented.
+MCGrad produces near-zero bias across all in-distribution age-shift scenarios ($\leq 0.27$pp). Because MCGrad is multicalibrated with respect to age and other features, its predictions are correct *conditional on* these covariates. When the age distribution shifts, the subgroup-level predictions remain valid, and their average tracks the true prevalence.
 
-Classify & Count also fails under shift. In the old-skewed scenario, it underestimates prevalence by 6.6 percentage points; in the young-skewed scenario, it overestimates by 2.5 percentage points. The threshold learned on the calibration set no longer separates the classes appropriately when the age distribution changes.
+In the OOD setting---applying the model to states never seen during training *and* shifting the age distribution---MCGrad's advantage persists with modestly larger bias (0.88--1.35pp), reflecting the additional geographic shift along an axis not included in the calibration subgroups. Even so, MCGrad's bias remains 3--8$\times$ smaller than the next best method.
 
-MCGrad produces near-zero bias across all in-distribution age-shift scenarios ($\leq$ 0.27pp). Because MCGrad is multicalibrated with respect to age, its predicted probabilities are correct *conditional on age*. When the age distribution shifts, the stratum-level predictions remain valid, and the average of the calibrated scores still tracks the true prevalence.
+# Discussion
 
-In the OOD setting---where the model is applied to states never seen during training *and* the age distribution is shifted---MCGrad's advantage persists, though with modestly larger bias (0.88--1.35pp) reflecting the additional geographic shift. Even so, MCGrad's bias remains 3--8$\times$ smaller than the next best method.
+We have shown that multicalibration---calibration conditional on subgroups, not just on average---is the key property for accurate model-based prevalence estimation under population shift. Standard calibration methods can produce severely biased estimates when the composition of the target population differs from the calibration population. Multicalibration resolves this by ensuring accuracy at the subgroup level, making prevalence estimates robust to arbitrary reweightings.
 
-# Appendix
+The practical implications are immediate. The growing use of LLMs as zero-shot measurement devices rests on the assumption that models validated on one population can be reliably applied to others. Our analysis shows this assumption is safe only when the model is multicalibrated with respect to features that may shift across populations. Without this, prevalence estimates in new populations---the primary use case for LLM-based measurement---are unreliable. Researchers using AI-based measurement should treat multicalibration not as an optional fairness criterion, but as a methodological requirement for valid inference.
 
-## Simulation Study Setup
+This result also clarifies why certain widely-used practices are inadequate. The common approach of reporting a model's overall accuracy, F1, or AUC on a held-out set provides no information about calibration, let alone multicalibration. A model with 95% accuracy can still produce heavily biased prevalence estimates if its errors are unevenly distributed across subgroups. Similarly, reporting a single calibration curve---as is standard in the quantification literature [@gonzalez2017review]---certifies only global calibration, which we have shown is insufficient under shift. Even comprehensive methodology textbooks for text-as-data research devote extensive attention to classification accuracy and validation but do not discuss calibration as a requirement for valid prevalence estimates [@grimmer2022text]; multicalibration is entirely absent from these discussions.
 
-### Data Generating Process
+Several limitations warrant discussion. First, multicalibration requires specifying the collection of subgroups $\mathcal{G}$. The guarantee holds only for shifts along axes represented in $\mathcal{G}$; if the relevant dimension of shift is absent, bias can persist---as reflected in the modest OOD bias in our empirical results, where geographic shift introduces variation beyond the calibrated features. In practice, $\mathcal{G}$ should include all features plausibly associated with both the outcome and the shift. Second, multicalibration requires labeled calibration data of sufficient size to estimate subgroup-specific corrections. This is feasible for standard ML pipelines but more challenging for LLMs used in truly zero-shot settings, where obtaining calibration labels may require the manual annotation that LLMs were intended to avoid. Prediction-powered inference [@angelopoulos2023ppi] offers a complementary framework for combining small labeled datasets with large-scale LLM predictions. Third, modern LLMs produce text rather than probability scores; calibratable scores can be obtained via token log-probabilities, confidence-elicitation prompts, or repeated sampling, but developing practical multicalibration pipelines for these outputs remains an open problem. Fourth, our framework assumes covariate shift ($P(Y|X)$ stable). Under concept drift, where the feature-outcome relationship itself changes, no purely statistical correction can substitute for new labeled data from the target distribution. Finally, our empirical application uses synthetic distribution shifts to evaluate bias. This design choice is deliberate: measuring bias requires knowing the true prevalence in the target population, which is generally unavailable under naturally occurring shifts. The synthetic shifts we construct are realistic in magnitude and correspond to substantively meaningful population differences.
 
-We generate synthetic data with a binary covariate $X \in \{0, 1\}$ and binary outcome $Y \in \{0, 1\}$. The conditional outcome probabilities are:
+These results connect two literatures that have developed in isolation. The quantification literature has focused on correcting aggregate error rates but has not engaged with subgroup-level calibration [@gonzalez2017review; @wu2024stable]. The multicalibration literature has focused on individual-level prediction quality and fairness but has not emphasized the implications for population-level inference [@hebertjohnson2018multicalibration; @kim2022universal]. Our contribution is to show that subgroup-level calibration is the missing link that makes model-based prevalence estimation reliable under the distribution shifts that motivate its use.
 
-$$P(Y=1|X=1) = 0.85, \quad P(Y=1|X=0) = 0.15$$
+# Materials and Methods
 
-A simulated classifier produces probability estimates $\hat{p}$ that are systematically miscalibrated within each stratum:
+**Simulation.** We generate $n = 10{,}000$ observations with a binary covariate $X \in \{0,1\}$ and outcome $Y \sim \text{Bernoulli}(P(Y|X))$, where $P(Y=1|X=1) = 0.85$ and $P(Y=1|X=0) = 0.15$. The classifier produces deterministic scores $\hat{p}(X=0) = 0.135$ and $\hat{p}(X=1) = 0.935$, representing 10% multiplicative bias within each stratum. For each of $B = 50$ iterations, we generate fresh calibration data from $P(X=0) = 0.5$, estimate all method-specific parameters, then evaluate bias on 20 test distributions with $P(X=0)$ ranging from 0.01 to 0.99. The five methods compared---uncalibrated averaging, Classify & Count with a prevalence-matched threshold, Rogan-Gladen adjustment, global multiplicative calibration, and multicalibration with stratum-specific additive corrections---are detailed with full mathematical definitions in the SI Appendix.
 
-- For $X=0$: $\hat{p} = P(Y=1|X=0) \times 0.9 = 0.135$ (10% underestimation)
-- For $X=1$: $\hat{p} = P(Y=1|X=1) \times 1.1 = 0.935$ (10% overestimation)
+**Empirical application.** We use the ACS Public Use Microdata Sample via the *folktables* package, with the ACSEmployment prediction task (binary: employed vs. not employed) and 16 sociodemographic features. Training data comprises eight states (TX, MI, PA, OH, IL, GA, NC, VA) across 2016--2018. The base model is logistic regression with standard scaling. Post-hoc calibration uses isotonic regression (global) and MCGrad (multicalibration with categorical and numerical segment features) on a held-out calibration set ($n \approx 644{,}000$). Synthetic age-shifted populations are created by importance-weighted resampling of the test set ($n \approx 920{,}000$), with exponential weights favoring young ages, old ages, or both extremes. Six additional states (CA, NY, FL, WA, AZ, CO) serve as OOD evaluation data.
 
-This setup represents a classifier whose predictions are directionally correct but exhibit stratum-specific bias---a common pattern in real-world machine learning systems.
-
-### Covariate Shift Protocol
-
-All calibration parameters are learned on a training distribution with $P(X=0) = 0.5$. We then evaluate prevalence estimation accuracy across shifted test distributions where $P(X=0)$ varies from 0.01 to 0.99. This range represents the full spectrum of potential distribution shifts, from populations dominated by $X=1$ to those dominated by $X=0$.
-
-The key assumption is that of covariate shift: while the marginal distribution $P(X)$ changes between training and test, the conditional distribution $P(Y|X)$ remains constant.
-
-### Prevalence Estimation Methods
-
-We compare five methods for estimating population prevalence $\pi = P(Y=1)$:
-
-1. **Uncalibrated Averaging**
-$$\hat{\pi}_{\text{uncal}} = \frac{1}{n}\sum_{i=1}^{n} \hat{p}_i$$
-The raw average of predicted probabilities without any correction.
-
-2. **Classify and Count (CC)**
-$$\hat{\pi}_{\text{CC}} = \frac{1}{n}\sum_{i=1}^{n} \mathbb{1}[\hat{p}_i \geq \tau]$$
-Predictions are binarized at threshold $\tau$, chosen on calibration data to match true prevalence, then the positive proportion is computed.
-
-3. **Rogan-Gladen Adjustment**
-$$\hat{\pi}_{\text{RG}} = \frac{\bar{p} - \text{FPR}}{\text{TPR} - \text{FPR}}$$
-A classical epidemiological correction where $\text{TPR} = \mathbb{E}[\hat{p}|Y=1]$ and $\text{FPR} = \mathbb{E}[\hat{p}|Y=0]$ are estimated from calibration data.
-
-4. **Global Calibration**
-$$\hat{\pi}_{\text{cal}} = \alpha \cdot \bar{p}, \quad \text{where } \alpha = \frac{\bar{Y}_{\text{cal}}}{\bar{p}_{\text{cal}}}$$
-A multiplicative correction factor learned to match expected prevalence on calibration data.
-
-5. **Multicalibration**
-$$\hat{\pi}_{\text{MC}} = \frac{1}{n}\sum_{i=1}^{n} (\hat{p}_i + \delta_{X_i}), \quad \text{where } \delta_x = \mathbb{E}[Y|X=x] - \mathbb{E}[\hat{p}|X=x]$$
-Stratum-specific additive corrections that ensure calibration conditional on $X$.
-
-### Simulation Procedure
-
-For each of $B=50$ bootstrap iterations:
-
-1. Generate fresh calibration data ($n=10{,}000$) from the training distribution ($P(X=0)=0.5$)
-2. Estimate all calibration parameters from this data
-3. For each of 20 test distributions with $P(X=0) \in [0.01, 0.99]$:
-   - Generate test data ($n=10{,}000$)
-   - Apply each estimation method using the learned calibration parameters
-   - Compute percentage bias: $\text{Bias\%} = 100 \times \frac{\hat{\pi} - \pi_{\text{true}}}{\pi_{\text{true}}}$
-
-This bootstrap procedure properly accounts for estimation variance in calibration parameters.
-
-### Results
-
-Multicalibration produces unbiased prevalence estimates across all distribution shifts (bias $\approx 0\%$ throughout). This robustness arises because multicalibration ensures $\mathbb{E}[\hat{p}|X] = \mathbb{E}[Y|X]$ for each stratum. Under covariate shift, where $P(Y|X)$ is invariant, these stratum-level corrections remain valid regardless of changes in $P(X)$.
-
-Global Calibration and Classify-and-Count exhibit similar bias patterns: zero bias at the training distribution ($P(X=0)=0.5$) but linearly increasing bias as the distribution shifts. At extreme shifts, bias reaches approximately $\pm 15\%$.
-
-Uncalibrated estimates show moderate shift sensitivity with bias scaling approximately linearly with distribution shift magnitude.
-
-Rogan-Gladen adjustment exhibits the most severe bias amplification, with bias exceeding $\pm 40\%$ at extreme shifts. This instability stems from two factors: (1) TPR and FPR parameters estimated on training data become incorrect under shift, and (2) the ratio estimator's small denominator ($\text{TPR} - \text{FPR}$) amplifies estimation errors.
-
-### Implications
-
-These results demonstrate that for applications where covariate shift is expected---such as deploying models across populations with different demographic compositions---multicalibration provides the most robust prevalence estimates. The critical requirement is that calibration corrections be learned conditional on covariates that may shift at deployment time. Standard calibration approaches that only ensure marginal calibration ($\mathbb{E}[\hat{p}] = \mathbb{E}[Y]$) are insufficient under distribution shift.
+**Software.** MCGrad is available at github.com/facebookincubator/MCGrad. Simulation and analysis code are available at [repository URL].
 
 # References
