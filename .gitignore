@@ -55,4 +55,3 @@ env/
 
 # LLM related
 .claude/
-context/
