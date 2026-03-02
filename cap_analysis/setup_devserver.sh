@@ -60,7 +60,7 @@ if torch.cuda.is_available():
     print(f'GPU: {torch.cuda.get_device_name(0)}')
     print(f'VRAM: {torch.cuda.get_device_properties(0).total_mem / 1e9:.1f} GB')
 else:
-    echo 'WARNING: No CUDA GPU detected!'
+    print('WARNING: No CUDA GPU detected!')
 "
 
 # Download and prepare data
