@@ -85,18 +85,20 @@ Selected over immigration (original plan) based on data-driven analysis:
 
 ### LLM Predictions
 
-- **Model:** Llama 3.1 8B (4-bit quantized, ~5GB RAM). Start with 8B; upgrade to 70B
-  on a GPU server only if 8B accuracy is too low.
-- **Inference framework:** MLX (optimized for Apple Silicon) on MacBook Pro M4 Max.
-  Local inference gives direct access to log-probabilities.
+- **Model:** Llama 3.1 70B (4-bit quantized, ~38GB VRAM). Upgraded from 8B after
+  feasibility testing showed 8B has insufficient multilingual capability (Spanish
+  AUC ~0.50, essentially random). 70B feasibility test in progress.
+- **Inference frameworks:** Two backends for reproducibility:
+  - `llm_inference.py` — MLX (Apple Silicon, MacBook Pro M4 Max)
+  - `llm_inference_cuda.py` — PyTorch/Transformers (NVIDIA GPU, devserver)
+  Same prompt, same score extraction, same output format.
 - **Prompt:** Zero-shot, multilingual: "The following text is in {language}. Does it
   primarily discuss law, crime, or criminal justice? Respond Yes or No."
   The LLM handles language comprehension and classification in a single pass.
 - **Score extraction:** P(Yes) / (P(Yes) + P(No)) from log-probabilities → continuous
   score in [0,1].
-- **Throughput estimate:** ~1–2 sec/document for 8B on M4 Max. 885K documents ≈ 10–20
-  days for full dataset. **Strategy: run feasibility test on ~500 docs first, then full
-  run on a representative subsample (~50-100K) if needed to keep overnight feasibility.**
+- **Inference strategy:** Subsample to ~105K documents (15K per sub-population) for
+  feasibility. Full run on A100 80G devserver (~1-3 hours for 105K).
 
 ### Calibration and Evaluation
 
@@ -175,18 +177,36 @@ Llama 3.1 has strong multilingual support for all four target languages.
 
 ## Implementation Status
 
-- [x] LLM inference script created (cap_analysis/llm_inference.py) — needs prompt update
-      for Law & Crime and language list update for Dutch/English
-- [x] Analysis notebook skeleton created (cap_analysis/cap_analysis.ipynb) — needs
-      significant revision for multi-doc-type design and Law & Crime topic
-- [x] Data downloaded for Denmark questions, Spain questions, Italy questions, UK PMQs,
-      Hungary interpellations
-- [ ] Data download needed: Spain media (El Pais + El Mundo), US Congressional Bills,
-      Belgium TV News + Newspaper
-- [ ] Feasibility test
-- [ ] Full LLM inference run
+- [x] Data preparation script (cap_analysis/prepare_data.py) — downloads all 7 datasets
+      from comparativeagendas.net and standardizes columns. Fully reproducible.
+- [x] LLM inference script — MLX backend (cap_analysis/llm_inference.py)
+- [x] LLM inference script — CUDA backend (cap_analysis/llm_inference_cuda.py)
+- [x] Analysis notebook (cap_analysis/cap_analysis.ipynb) — mirrors ACS design
+- [x] Devserver setup script (cap_analysis/setup_devserver.sh)
+- [x] All 7 datasets downloaded, cleaned, standardized
+- [x] Feasibility test with 8B on MacBook (510 docs):
+      - Danish: AUC 0.747 (usable)
+      - English: AUC 0.850 (good)
+      - Spanish: AUC 0.891 on small sample, but ~0.50 on larger sample (no signal)
+- [x] 8B full run started (105K sample) — confirmed Spanish AUC ~0.50 at 7K docs
+- [ ] **IN PROGRESS:** 70B feasibility test on A100 devserver (7,000 docs, 1K per sub-pop)
+- [ ] Full 70B inference run (105K docs on A100, ~1-3 hours)
 - [ ] Analysis pipeline execution
-- [ ] Devil's advocate review
+- [ ] Paper integration
+
+## 8B Feasibility Results (Llama 3.1 8B, 4-bit, MLX on M4 Max)
+
+The 8B model showed good discriminative power for English and Danish but essentially
+random performance for Spanish:
+
+| Sub-population | N scored | AUC | Pos mean | Neg mean |
+|---|---|---|---|---|
+| Denmark / parliamentary_question | 5,040 | 0.793 | 0.396 | 0.182 |
+| US / bill (English) | 170 | 0.850 | 0.465 | 0.111 |
+| Spain / parliamentary_question | 627 | 0.468 | 0.142 | 0.171 |
+| Spain / media | 1,320 | 0.505 | 0.191 | 0.179 |
+
+Decision: upgrade to 70B for all languages. Running feasibility test on A100 devserver.
 
 ## Open Questions
 
@@ -203,8 +223,7 @@ All resolved:
 
 ## Remaining Contingencies
 
-- If 8B accuracy is too low (<70%) on feasibility test → upgrade to 70B on GPU
-- If 885K documents is too large for overnight run → subsample to ~100K while
-  maintaining proportional representation across sub-populations
+- If 70B Spanish AUC is still too low → consider language-specific prompts or a
+  different model (e.g., Llama 3.3 70B)
 - If party metadata is too sparse → use country + doc_type + decade as primary
   multicalibration features
