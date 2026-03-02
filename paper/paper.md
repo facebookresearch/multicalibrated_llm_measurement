@@ -1,6 +1,12 @@
 ---
 title: "Multicalibration Is Necessary for Unbiased Model-Based Prevalence Estimation"
 bibliography: references.bib
+geometry: margin=1in
+fontsize: 11pt
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{graphicx}
+  - \usepackage{float}
 ---
 
 ## Significance
@@ -65,7 +71,7 @@ Practical post-hoc multicalibration algorithms can be applied to any base predic
 
 We illustrate the theoretical results above with a controlled simulation. We generate data with a binary covariate $X \in \{0,1\}$ and binary outcome $Y$, where $P(Y=1|X=1) = 0.85$ and $P(Y=1|X=0) = 0.15$. A classifier produces systematically biased predictions: 10% underestimation when $X=0$ and 10% overestimation when $X=1$. All calibration parameters are learned on a balanced training distribution ($P(X=0) = 0.5$). We then evaluate prevalence estimates on test distributions where $P(X=0)$ ranges from 0.01 to 0.99, repeating 50 times (details in Materials and Methods).
 
-![Figure 1](images/figure_multicalibration_comparison.png)
+![Figure 1](images/figure_multicalibration_comparison.png){width=100%}
 
 *Figure 1: Prevalence estimation under covariate shift for six methods across 50 simulation runs. (a) Average bias (%). (b) Root mean squared error (RMSE). Only multicalibration maintains near-zero bias and RMSE across all levels of distribution shift.*
 
@@ -79,22 +85,22 @@ To illustrate how distribution shift can lead to strongly biased measurements, w
 
 **Age distribution shift.** Employment rates vary dramatically by age: approximately 47% for ages 16--24, 76% for ages 25--54, 61% for ages 55--64, and 17% for ages 65+. This makes age an ideal dimension along which to construct meaningful distribution shifts. We create synthetic target populations by resampling test data with shifted age distributions: young-skewed (oversampling ages 16--30), old-skewed (oversampling ages 60+), and bimodal (oversampling both tails). The resulting populations have true employment rates ranging from 12.8% to 46.0%. All calibration parameters are estimated once on the original calibration set and held fixed across scenarios.
 
-![Figure 2](images/figure2_acs_age_shift.png)
+![Figure 2](images/figure2_acs_age_shift.png){width=100%}
 
 *Figure 2: Prevalence estimation bias (percentage points) under synthetic age distribution shift, for in-distribution data (left) and out-of-distribution states (right).*
 
-| Setting | Age Dist.    | True Prev. | Raw Scores | CC      | Rogan-Gladen | PACC    | SLD     | Isotonic | MCGrad  |
-|---------|--------------|------------|------------|---------|--------------|---------|---------|----------|---------|
-| In-Dist | Original     | 46.0%      | -0.31      | -0.07   | +0.26        | -0.07   | +0.01   | -0.30    | -0.27   |
-| In-Dist | Young-skewed | 12.8%      | +1.93      | +2.47   | -12.82       | -12.82  | -11.95  | +2.04    | -0.11   |
-| In-Dist | Old-skewed   | 16.8%      | +7.23      | -6.62   | -16.77       | -16.77  | -16.76  | +6.65    | +0.22   |
-| In-Dist | Bimodal      | 21.1%      | +4.57      | -1.50   | -18.62       | -19.97  | -16.14  | +4.33    | +0.12   |
-| OOD     | Original     | 45.1%      | +1.15      | +1.40   | +2.12        | +2.13   | +2.25   | +1.17    | +1.35   |
-| OOD     | Young-skewed | 13.0%      | +2.93      | +3.73   | -12.96       | -12.96  | -11.38  | +3.08    | +0.88   |
-| OOD     | Old-skewed   | 16.0%      | +8.47      | -5.64   | -15.97       | -15.97  | -15.97  | +7.91    | +1.01   |
-| OOD     | Bimodal      | 20.8%      | +5.91      | +0.09   | -16.14       | -17.27  | -15.20  | +5.69    | +1.13   |
+| Setting | Age Dist.    | True Prev. | Raw   | CC    | RG      | PACC    | SLD     | Iso.  | MCGrad |
+|---------|--------------|------------|-------|-------|---------|---------|---------|-------|--------|
+| In-Dist | Original     | 46.0%      | -0.31 | -0.07 | +0.26   | -0.07   | +0.01   | -0.30 | -0.27  |
+| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -11.95  | +2.04 | -0.11  |
+| In-Dist | Old-skewed   | 16.8%      | +7.23 | -6.62 | -16.77  | -16.77  | -16.76  | +6.65 | +0.22  |
+| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.14  | +4.33 | +0.12  |
+| OOD     | Original     | 45.1%      | +1.15 | +1.40 | +2.12   | +2.13   | +2.25   | +1.17 | +1.35  |
+| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -11.38  | +3.08 | +0.88  |
+| OOD     | Old-skewed   | 16.0%      | +8.47 | -5.64 | -15.97  | -15.97  | -15.97  | +7.91 | +1.01  |
+| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.20  | +5.69 | +1.13  |
 
-*Table 1: Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift.*
+*Table 1: Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift. RG = Rogan-Gladen, Iso. = Isotonic regression.*
 
 **Results.** With no age shift, all methods produce approximately unbiased estimates (Table 1). Under shift, the methods diverge sharply.
 
