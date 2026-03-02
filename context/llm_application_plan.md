@@ -191,8 +191,8 @@ Llama 3.1 has strong multilingual support for all four target languages.
       - English: AUC 0.850 (good)
       - Spanish: AUC 0.891 on small sample, but ~0.50 on larger sample (no signal)
 - [x] 8B full run started (105K sample) — confirmed Spanish AUC ~0.50 at 7K docs
-- [ ] **IN PROGRESS:** 70B feasibility test on A100 devserver (7,000 docs, 1K per sub-pop)
-- [ ] Full 70B inference run (105K docs on A100, ~1-3 hours)
+- [x] 70B feasibility test on A100 devserver (7,152 docs) — all AUCs > 0.85, see below
+- [ ] **IN PROGRESS:** Full 70B inference run (105K docs on A100)
 - [ ] Analysis pipeline execution
 - [ ] Paper integration
 
@@ -210,6 +210,25 @@ random performance for Spanish:
 
 Decision: upgrade to 70B for all languages. Running feasibility test on A100 devserver.
 
+## 3.3 70B Feasibility Results (Llama 3.3 70B Instruct, 4-bit, CUDA on A100)
+
+Switched from 3.1 to 3.3 for improved multilingual performance. Model weights
+downloaded from Manifold (asa bucket). All sub-populations pass the AUC > 0.7
+threshold with strong separation between positive and negative scores:
+
+| Sub-population | N scored | Prev | AUC | Pos mean | Neg mean |
+|---|---|---|---|---|---|
+| Belgium / newspaper | 1,000 | 8.3% | 0.942 | 0.952 | 0.185 |
+| Belgium / tv_news | 1,000 | 11.5% | 0.939 | 0.957 | 0.168 |
+| Denmark / parliamentary_question | 1,024 | 7.3% | 0.881 | 0.830 | 0.176 |
+| Spain / media | 2,082 | 17.2% | 0.855 | 0.832 | 0.250 |
+| Spain / parliamentary_question | 1,046 | 13.3% | 0.936 | 0.889 | 0.143 |
+| United States / bill | 1,000 | 5.5% | 0.894 | 0.877 | 0.358 |
+| **Overall** | **7,152** | | **0.895** | | |
+
+Spanish AUC improved from ~0.50 (8B) to 0.855–0.936 (3.3 70B). Feasibility
+confirmed; proceeding with full 105K inference run.
+
 ## Open Questions
 
 All resolved:
@@ -218,14 +237,12 @@ All resolved:
 - [x] Which document types? → Questions, media, bills, TV news (7 sub-populations)
 - [x] Language handling? → LLM classifies in original language (multilingual prompt)
 - [x] Which topic? → Law & Crime (CAP code 12)
-- [x] Which LLM? → Llama 3.1 8B (4-bit) as default; 70B on GPU as fallback
-- [x] Hardware? → MacBook Pro M4 Max via MLX
+- [x] Which LLM? → Llama 3.3 70B Instruct (4-bit quantized, CUDA on A100)
+- [x] Hardware? → A100 80GB devserver (primary), MacBook Pro M4 Max via MLX (backup)
 - [x] Does this replace the ACS application? → Complement
 - [x] Budget? → N/A, local inference
 
 ## Remaining Contingencies
 
-- If 70B Spanish AUC is still too low → consider language-specific prompts or a
-  different model (e.g., Llama 3.3 70B)
 - If party metadata is too sparse → use country + doc_type + decade as primary
   multicalibration features
