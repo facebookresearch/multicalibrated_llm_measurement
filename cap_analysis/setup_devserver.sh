@@ -34,7 +34,13 @@
 
 set -euo pipefail
 
+# Always run from the repo root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$REPO_ROOT"
+
 echo "=== CAP LLM Inference: DevServer Setup ==="
+echo "Working directory: $(pwd)"
 
 # Proxy for external access (packages + CAP data downloads)
 export HTTPS_PROXY=http://fwdproxy:8080
