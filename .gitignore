@@ -55,3 +55,4 @@ env/
 
 # LLM related
 .claude/
+CLAUDE.md
