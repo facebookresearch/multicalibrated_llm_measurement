@@ -128,5 +128,4 @@ These results connect two literatures that have developed in isolation. The quan
 
 **Software.** MCGrad is available at github.com/facebookincubator/MCGrad. Simulation and analysis code are available at [repository URL].
 
-
 # References
