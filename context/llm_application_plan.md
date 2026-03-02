@@ -85,9 +85,11 @@ Selected over immigration (original plan) based on data-driven analysis:
 
 ### LLM Predictions
 
-- **Model:** Llama 3.1 70B (4-bit quantized, ~38GB VRAM). Upgraded from 8B after
-  feasibility testing showed 8B has insufficient multilingual capability (Spanish
-  AUC ~0.50, essentially random). 70B feasibility test in progress.
+- **Model:** Llama 3.3 70B Instruct (4-bit quantized, ~38GB VRAM). Upgraded from
+  8B (insufficient multilingual capability, Spanish AUC ~0.50) and switched from
+  3.1 to 3.3 for improved multilingual performance. 3.3 matches 3.1 405B on many
+  benchmarks. Weights downloaded from Manifold (asa bucket) for devserver use;
+  HuggingFace path (meta-llama/Llama-3.3-70B-Instruct) for reproducibility.
 - **Inference frameworks:** Two backends for reproducibility:
   - `llm_inference.py` — MLX (Apple Silicon, MacBook Pro M4 Max)
   - `llm_inference_cuda.py` — PyTorch/Transformers (NVIDIA GPU, devserver)

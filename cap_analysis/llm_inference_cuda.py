@@ -72,26 +72,26 @@ def load_model(model_id, use_4bit=True):
                 model_id,
                 quantization_config=bnb_config,
                 device_map="auto",
-                torch_dtype=torch.float16,
+                dtype=torch.float16,
             )
         else:
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
                 device_map="auto",
-                torch_dtype=torch.float16,
+                dtype=torch.float16,
             )
     elif torch.backends.mps.is_available():
         # Apple Silicon — MPS backend, no bitsandbytes support
         device = "mps"
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch.float16,
+            dtype=torch.float16,
         ).to(device)
     else:
         device = "cpu"
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch.float32,
+            dtype=torch.float32,
         )
 
     model.eval()
