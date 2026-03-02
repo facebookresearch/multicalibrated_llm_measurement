@@ -1,0 +1,29 @@
+name: Compile Paper
+
+on:
+  push:
+    branches: [main]
+    paths: ['paper/**']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc
+
+      - name: Compile PDF
+        working-directory: paper
+        run: pandoc paper.md -o paper.pdf --citeproc
+
+      - name: Commit PDF if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet paper/paper.pdf || (git add paper/paper.pdf && git commit -m "Recompile paper.pdf" && git push)
