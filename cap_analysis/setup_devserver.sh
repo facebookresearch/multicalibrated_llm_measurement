@@ -1,30 +1,18 @@
 #!/usr/bin/env bash
 # Setup script for running CAP LLM inference on a Meta GPU devserver.
 #
-# Prerequisites:
-#   - A100 80G devserver reserved
-#   - Data files transferred from MacBook (see instructions below)
-#
 # Usage:
 #   1. Reserve a devserver (1 x A100 80G GPU)
 #
 #   2. Clone the repo on the devserver:
-#        git clone <repo-url> ~/mc_measurement
-#
-#   3. Transfer data files from your MacBook to the devserver:
-#        DEVSERVER=your-devserver-hostname
-#        scp cap_analysis/data/*_final.csv \
-#            cap_analysis/data/feasibility_sample_70b.csv \
-#            cap_analysis/data/full_sample.csv \
-#            $DEVSERVER:~/mc_measurement/cap_analysis/data/
-#
-#   4. SSH into the devserver and run this script:
 #        ssh $DEVSERVER
+#        git clone <repo-url> ~/mc_measurement
 #        cd ~/mc_measurement
+#
+#   3. Run this script (installs deps, downloads data, verifies GPU):
 #        bash cap_analysis/setup_devserver.sh
 #
-#   5. Run the feasibility test (~10-30 min on A100):
-#        cd ~/mc_measurement
+#   4. Run the feasibility test (~10-30 min on A100):
 #        source ~/cap_env/bin/activate
 #        python cap_analysis/llm_inference_cuda.py \
 #          --input cap_analysis/data/feasibility_sample_70b.csv \
@@ -32,14 +20,14 @@
 #          --model meta-llama/Llama-3.1-70B-Instruct \
 #          --no-resume
 #
-#   6. If feasibility looks good, run the full 105K sample (~1-3 hours on A100):
+#   5. If feasibility looks good, run the full 105K sample (~1-3 hours on A100):
 #        python cap_analysis/llm_inference_cuda.py \
 #          --input cap_analysis/data/full_sample.csv \
 #          --output cap_analysis/data/inference_output/llama-70b/full_scores.csv \
 #          --model meta-llama/Llama-3.1-70B-Instruct \
 #          --no-resume
 #
-#   7. Copy results back to MacBook:
+#   6. Copy results back to MacBook:
 #        # From your MacBook:
 #        scp -r $DEVSERVER:~/mc_measurement/cap_analysis/data/inference_output/llama-70b/ \
 #            cap_analysis/data/inference_output/llama-70b/
@@ -48,7 +36,7 @@ set -euo pipefail
 
 echo "=== CAP LLM Inference: DevServer Setup ==="
 
-# Proxy for external package downloads
+# Proxy for external access (packages + CAP data downloads)
 export HTTPS_PROXY=http://fwdproxy:8080
 export HTTP_PROXY=http://fwdproxy:8080
 
@@ -60,7 +48,7 @@ source ~/cap_env/bin/activate
 # Install dependencies
 echo "Installing dependencies..."
 pip install --upgrade pip
-pip install torch transformers accelerate bitsandbytes tqdm
+pip install torch transformers accelerate bitsandbytes tqdm pandas requests
 
 # Verify GPU access
 echo ""
@@ -71,25 +59,21 @@ print(f'CUDA available: {torch.cuda.is_available()}')
 if torch.cuda.is_available():
     print(f'GPU: {torch.cuda.get_device_name(0)}')
     print(f'VRAM: {torch.cuda.get_device_properties(0).total_mem / 1e9:.1f} GB')
+else:
+    echo 'WARNING: No CUDA GPU detected!'
 "
+
+# Download and prepare data
+echo ""
+echo "=== Downloading and preparing CAP data ==="
+python3 cap_analysis/prepare_data.py --proxy http://fwdproxy:8080
 
 # Create output directories
 mkdir -p cap_analysis/data/inference_output/llama-70b
 
-# Verify data files exist
-echo ""
-echo "=== Data Check ==="
-for f in cap_analysis/data/feasibility_sample_70b.csv cap_analysis/data/full_sample.csv; do
-    if [ -f "$f" ]; then
-        lines=$(wc -l < "$f")
-        echo "  OK: $f ($lines lines)"
-    else
-        echo "  MISSING: $f — transfer from MacBook (see instructions above)"
-    fi
-done
-
 echo ""
 echo "=== Setup Complete ==="
+echo ""
 echo "Run the feasibility test with:"
 echo "  source ~/cap_env/bin/activate"
 echo "  python cap_analysis/llm_inference_cuda.py \\"
