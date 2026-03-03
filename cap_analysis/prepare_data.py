@@ -89,7 +89,7 @@ def make_standard_df(df, text_col, country, language, doc_type,
                      party_col=None, party_family_col=None, party_code_col=None):
     """Create standardized DataFrame with consistent columns."""
     out = pd.DataFrame()
-    out["id"] = df["id"].astype(str)
+    out["id_original"] = df["id"].astype(str)
     out["country"] = country
     out["language"] = language
     out["doc_type"] = doc_type
@@ -237,6 +237,13 @@ def prepare_belgium_newspaper(raw_dir):
     return out
 
 
+def _assign_unique_ids(df):
+    """Assign globally unique IDs based on row index."""
+    df = df.copy()
+    df["id"] = range(len(df))
+    return df
+
+
 def create_samples(output_dir, datasets):
     """Create feasibility and full inference samples."""
     import numpy as np
@@ -249,6 +256,7 @@ def create_samples(output_dir, datasets):
         feasibility_frames.append(sampled)
         print(f"  {name}: {len(sampled)} sampled, {int(sampled.law_crime.sum())} positives")
     feasibility = pd.concat(feasibility_frames, ignore_index=True)
+    feasibility = _assign_unique_ids(feasibility)
     feas_path = os.path.join(output_dir, "feasibility_sample_70b.csv")
     feasibility.to_csv(feas_path, index=False)
     print(f"  Total: {len(feasibility)} docs, {int(feasibility.law_crime.sum())} positives")
@@ -262,6 +270,7 @@ def create_samples(output_dir, datasets):
         full_frames.append(sampled)
         print(f"  {name}: {len(sampled)} sampled, {int(sampled.law_crime.sum())} positives")
     full = pd.concat(full_frames, ignore_index=True)
+    full = _assign_unique_ids(full)
     full_path = os.path.join(output_dir, "full_sample.csv")
     full.to_csv(full_path, index=False)
     print(f"  Total: {len(full)} docs, {int(full.law_crime.sum())} positives")
