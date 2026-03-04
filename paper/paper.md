@@ -1,5 +1,12 @@
 ---
 title: "Multicalibration Is Necessary for Unbiased Model-Based Prevalence Estimation"
+author:
+  - Thomas Leeper^1^
+  - Fridolin Linder^1^
+  - Daniel Haimovich^1^
+  - Niek Tax^1^
+  - Lorenzo Perini^1^
+  - Milan Vojnovic^1,2^
 bibliography: references.bib
 geometry: margin=2cm
 fontsize: 11pt
@@ -8,6 +15,8 @@ header-includes:
   - \usepackage{graphicx}
   - \usepackage{float}
 ---
+
+^1^Meta, ^2^The London School of Economics and Political Science
 
 ## Significance
 
