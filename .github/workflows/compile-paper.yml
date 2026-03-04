@@ -13,10 +13,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Pandoc and LaTeX
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pandoc texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended lmodern
+      - name: Cache APT packages
+        uses: awalber/cache-apt-pkgs-action@latest
+        with:
+          packages: pandoc texlive-latex-base texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended lmodern
 
       - name: Compile PDF
         working-directory: paper
