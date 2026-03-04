@@ -14,4 +14,5 @@ METHOD_COLORS = {
     "PACC": "#CCBB44",                # yellow
     "Isotonic Regression": "#AA3377", # purple (= Global Calibration)
     "MCGrad": "#222222",              # near-black (= Multicalibration)
+    "MCGrad + Emb.": "#44AA99",       # teal
 }
