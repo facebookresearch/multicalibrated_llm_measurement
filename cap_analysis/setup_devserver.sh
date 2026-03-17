@@ -1,36 +1,17 @@
 #!/usr/bin/env bash
 # Setup script for running CAP LLM inference on a Meta GPU devserver.
 #
+# Two inference pipelines:
+#   - llm_inference_cuda.py: logprob-based P(Yes)/(P(Yes)+P(No)) scoring
+#   - llm_inference_cuda_verbalized.py: verbalized confidence (0-100 scale)
+#
 # Usage:
 #   1. Reserve a devserver (1 x A100 80G GPU)
-#
-#   2. Clone the repo on the devserver:
-#        ssh $DEVSERVER
-#        git clone <repo-url> ~/mc_measurement
-#        cd ~/mc_measurement
-#
-#   3. Run this script (installs deps, downloads data, verifies GPU):
-#        bash cap_analysis/setup_devserver.sh
-#
-#   4. Run the feasibility test (~10-30 min on A100):
-#        source ~/cap_env/bin/activate
-#        python cap_analysis/llm_inference_cuda.py \
-#          --input cap_analysis/data/feasibility_sample_70b.csv \
-#          --output cap_analysis/data/inference_output/llama-70b/feasibility_scores.csv \
-#          --model meta-llama/Llama-3.1-70B-Instruct \
-#          --no-resume
-#
-#   5. If feasibility looks good, run the full 105K sample (~1-3 hours on A100):
-#        python cap_analysis/llm_inference_cuda.py \
-#          --input cap_analysis/data/full_sample.csv \
-#          --output cap_analysis/data/inference_output/llama-70b/full_scores.csv \
-#          --model meta-llama/Llama-3.1-70B-Instruct \
-#          --no-resume
-#
-#   6. Copy results back to MacBook:
-#        # From your MacBook:
-#        scp -r $DEVSERVER:~/mc_measurement/cap_analysis/data/inference_output/llama-70b/ \
-#            cap_analysis/data/inference_output/llama-70b/
+#   2. Clone/pull the repo:  ssh $DEVSERVER && cd ~/mc_measurement && git pull
+#   3. Run this script:      bash cap_analysis/setup_devserver.sh
+#   4. Follow the printed commands to run inference
+#   5. Copy results back:    scp -r $DEVSERVER:~/mc_measurement/cap_analysis/data/inference_output/ \
+#                                 cap_analysis/data/inference_output/
 
 set -euo pipefail
 
@@ -76,14 +57,46 @@ python3 cap_analysis/prepare_data.py --proxy http://fwdproxy:8080
 
 # Create output directories
 mkdir -p cap_analysis/data/inference_output/llama-70b
+mkdir -p cap_analysis/data/inference_output/llama-70b-verbalized
 
 echo ""
 echo "=== Setup Complete ==="
 echo ""
-echo "Run the feasibility test with:"
+echo "Activate the environment:"
 echo "  source ~/cap_env/bin/activate"
+echo ""
+echo "--- Logprob scoring (original) ---"
+echo ""
+echo "Feasibility test (~10-30 min):"
 echo "  python cap_analysis/llm_inference_cuda.py \\"
 echo "    --input cap_analysis/data/feasibility_sample_70b.csv \\"
 echo "    --output cap_analysis/data/inference_output/llama-70b/feasibility_scores.csv \\"
-echo "    --model meta-llama/Llama-3.1-70B-Instruct \\"
+echo "    --model meta-llama/Llama-3.3-70B-Instruct \\"
 echo "    --no-resume"
+echo ""
+echo "Full run (~1-3 hours):"
+echo "  python cap_analysis/llm_inference_cuda.py \\"
+echo "    --input cap_analysis/data/full_sample.csv \\"
+echo "    --output cap_analysis/data/inference_output/llama-70b/full_scores.csv \\"
+echo "    --model meta-llama/Llama-3.3-70B-Instruct \\"
+echo "    --no-resume"
+echo ""
+echo "--- Verbalized confidence scoring ---"
+echo ""
+echo "Feasibility test (~10-30 min):"
+echo "  python cap_analysis/llm_inference_cuda_verbalized.py \\"
+echo "    --input cap_analysis/data/feasibility_sample_70b.csv \\"
+echo "    --output cap_analysis/data/inference_output/llama-70b-verbalized/feasibility_scores.csv \\"
+echo "    --model meta-llama/Llama-3.3-70B-Instruct \\"
+echo "    --no-resume"
+echo ""
+echo "Full run (~2-5 hours):"
+echo "  python cap_analysis/llm_inference_cuda_verbalized.py \\"
+echo "    --input cap_analysis/data/full_sample.csv \\"
+echo "    --output cap_analysis/data/inference_output/llama-70b-verbalized/full_scores.csv \\"
+echo "    --model meta-llama/Llama-3.3-70B-Instruct \\"
+echo "    --no-resume"
+echo ""
+echo "--- Copy results back to MacBook ---"
+echo "  scp -r \$DEVSERVER:~/mc_measurement/cap_analysis/data/inference_output/ \\"
+echo "      cap_analysis/data/inference_output/"
