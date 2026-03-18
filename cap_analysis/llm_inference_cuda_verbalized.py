@@ -4,14 +4,20 @@ LLM inference pipeline for CAP political text classification — verbalized conf
 Instead of extracting Yes/No token logprobs, this script asks the model to state
 its confidence as a number (0-100), producing less bimodal score distributions.
 
+Supports temperature sampling with K completions per document to produce
+continuous averaged scores (useful when greedy decoding yields bimodal outputs).
+
 Classifies political texts as law/crime-related (CAP topic 12)
 using Llama 3.3 70B via HuggingFace Transformers + PyTorch.
 
 Output format is identical to llm_inference_cuda.py for downstream compatibility:
     id, score, token, language, error
 
-where `score` is the verbalized confidence divided by 100 (mapped to [0, 1]),
-and `token` is the raw text the model generated.
+where `score` is the mean verbalized confidence across K samples (mapped to [0, 1]),
+and `token` records the K individual parsed scores (semicolon-separated).
+
+Data parallelism: use --shard i/N to split input across N processes (one per GPU),
+each pinned via CUDA_VISIBLE_DEVICES.
 """
 
 import argparse
@@ -154,33 +160,70 @@ def parse_confidence(text):
     return value / 100.0
 
 
-def classify_single(text, language, model, tokenizer, device):
+def classify_single(text, language, model, tokenizer, device,
+                     temperature=0.0, num_samples=1):
     """
     Classify a single document via verbalized confidence.
 
-    Returns (score, raw_text) or raises on failure.
+    When num_samples > 1, generates K completions at the given temperature
+    and returns the mean score. The prompt is encoded once and K completions
+    are sampled in a single forward pass via num_return_sequences.
+
+    Returns (mean_score, individual_scores_list) or raises on failure.
     """
     prompt_str = format_prompt(text, language, tokenizer)
     inputs = tokenizer(prompt_str, return_tensors="pt").to(device)
 
+    do_sample = temperature > 0 and num_samples > 1
+    gen_kwargs = dict(
+        **inputs,
+        max_new_tokens=10,
+        do_sample=do_sample,
+        num_return_sequences=num_samples if do_sample else 1,
+    )
+    if do_sample:
+        gen_kwargs["temperature"] = temperature
+        gen_kwargs["top_p"] = 0.95
+    else:
+        gen_kwargs["temperature"] = None
+        gen_kwargs["top_p"] = None
+
     with torch.no_grad():
-        output_ids = model.generate(
-            **inputs,
-            max_new_tokens=10,
-            do_sample=False,
-            temperature=None,
-            top_p=None,
+        output_ids = model.generate(**gen_kwargs)
+
+    # Decode each of the K generated sequences
+    prompt_len = inputs["input_ids"].shape[1]
+    n_seqs = output_ids.shape[0]
+    parsed_scores = []
+    raw_texts = []
+
+    for k in range(n_seqs):
+        generated_ids = output_ids[k, prompt_len:]
+        raw_text = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
+        raw_texts.append(raw_text)
+        score = parse_confidence(raw_text)
+        if score is not None:
+            parsed_scores.append(score)
+
+    if not parsed_scores:
+        raise ValueError(
+            f"Could not parse confidence from any of {n_seqs} samples: "
+            f"{raw_texts!r}"
         )
 
-    # Decode only the generated tokens (exclude prompt)
-    generated_ids = output_ids[0, inputs["input_ids"].shape[1]:]
-    raw_text = tokenizer.decode(generated_ids, skip_special_tokens=True)
+    mean_score = sum(parsed_scores) / len(parsed_scores)
+    return mean_score, parsed_scores
 
-    score = parse_confidence(raw_text)
-    if score is None:
-        raise ValueError(f"Could not parse confidence from: {raw_text!r}")
 
-    return score, raw_text.strip()
+def parse_shard(shard_str):
+    """Parse --shard argument of the form 'i/N'. Returns (i, N)."""
+    parts = shard_str.split("/")
+    if len(parts) != 2:
+        raise ValueError(f"--shard must be in format 'i/N', got '{shard_str}'")
+    i, n = int(parts[0]), int(parts[1])
+    if i < 0 or i >= n:
+        raise ValueError(f"Shard index {i} out of range for {n} shards")
+    return i, n
 
 
 def load_input_data(input_path):
@@ -258,6 +301,26 @@ def main():
         action="store_true",
         help="Start fresh instead of resuming from existing output",
     )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.7,
+        help="Sampling temperature (default: 0.7). Only used when --num-samples > 1.",
+    )
+    parser.add_argument(
+        "--num-samples",
+        type=int,
+        default=1,
+        help="Number of sampled completions per document (default: 1 = greedy). "
+        "The final score is the mean across K parsed samples.",
+    )
+    parser.add_argument(
+        "--shard",
+        type=str,
+        default=None,
+        help="Data shard in format 'i/N' (e.g. '0/2' for first of two shards). "
+        "Use with CUDA_VISIBLE_DEVICES for multi-GPU parallelism.",
+    )
     args = parser.parse_args()
 
     # Resolve language
@@ -271,6 +334,11 @@ def main():
     else:
         default_language = None
 
+    # Parse shard
+    shard_idx, n_shards = None, None
+    if args.shard:
+        shard_idx, n_shards = parse_shard(args.shard)
+
     # Load input data
     print(f"Loading input data from {args.input}...")
     rows = load_input_data(args.input)
@@ -282,6 +350,16 @@ def main():
         random.seed(42)
         rows = random.sample(rows, args.sample)
         print(f"  Sampled {len(rows)} documents.")
+
+    # Apply sharding (after sampling, so each shard gets a consistent slice)
+    if shard_idx is not None:
+        total = len(rows)
+        chunk_size = (total + n_shards - 1) // n_shards  # ceiling division
+        start = shard_idx * chunk_size
+        end = min(start + chunk_size, total)
+        rows = rows[start:end]
+        print(f"  Shard {shard_idx}/{n_shards}: processing rows {start}-{end-1} "
+              f"({len(rows)} documents)")
 
     # Check for resume
     if not args.no_resume:
@@ -299,6 +377,12 @@ def main():
 
     # Resolve model path (download from manifold if needed)
     model_path = args.model or ensure_model_local(MODEL_LOCAL_PATH, MANIFOLD_PATH)
+
+    # Log sampling config
+    if args.num_samples > 1:
+        print(f"  Sampling: K={args.num_samples}, temperature={args.temperature}")
+    else:
+        print("  Mode: greedy (single completion per document)")
 
     # Load model
     model, tokenizer, device = load_model(model_path, use_4bit=not args.no_4bit)
@@ -330,13 +414,17 @@ def main():
             text = text[:max_chars]
 
         try:
-            score, raw_text = classify_single(
-                text, language, model, tokenizer, device
+            mean_score, individual_scores = classify_single(
+                text, language, model, tokenizer, device,
+                temperature=args.temperature,
+                num_samples=args.num_samples,
             )
+            # Store individual scores as semicolon-separated for transparency
+            scores_str = ";".join(f"{s:.4f}" for s in individual_scores)
             results_buffer.append({
                 "id": doc_id,
-                "score": f"{score:.6f}",
-                "token": raw_text,
+                "score": f"{mean_score:.6f}",
+                "token": scores_str,
                 "language": language,
                 "error": "",
             })
