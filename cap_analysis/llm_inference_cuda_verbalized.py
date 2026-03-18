@@ -21,9 +21,14 @@ import re
 import sys
 import time
 
+import logging
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from tqdm import tqdm
+
+# Suppress repetitive "Setting pad_token_id to eos_token_id" warnings
+logging.getLogger("transformers.generation.utils").setLevel(logging.ERROR)
 
 
 MODEL_ID = "meta-llama/Llama-3.3-70B-Instruct"
