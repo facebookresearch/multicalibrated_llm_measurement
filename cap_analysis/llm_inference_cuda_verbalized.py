@@ -18,6 +18,7 @@ import argparse
 import csv
 import os
 import re
+import subprocess
 import sys
 import time
 
@@ -31,7 +32,8 @@ from tqdm import tqdm
 logging.getLogger("transformers.generation.utils").setLevel(logging.ERROR)
 
 
-MODEL_ID = "meta-llama/Llama-3.3-70B-Instruct"
+MODEL_LOCAL_PATH = os.path.expanduser("~/models/Llama-3.3-70B-Instruct")
+MANIFOLD_PATH = "asa/tree/huggingface/model--meta-llama--Llama-3.3-70B-Instruct"
 
 PROMPT_TEMPLATE = (
     "The following text is in {language}. "
@@ -54,6 +56,30 @@ LANGUAGE_MAP = {
 }
 
 SAVE_INTERVAL = 1000
+
+
+def ensure_model_local(local_path, manifold_path):
+    """Download model weights from manifold if not available locally."""
+    if os.path.exists(local_path) and os.path.isdir(local_path):
+        safetensors = [f for f in os.listdir(local_path) if f.endswith(".safetensors")]
+        if safetensors:
+            print(f"Model found locally at {local_path}")
+            return local_path
+
+    print(f"Model not found locally at {local_path}")
+    print(f"Downloading from manifold: {manifold_path} ...")
+    os.makedirs(local_path, exist_ok=True)
+    result = subprocess.run(
+        ["manifold", "--prod-use-cython-client", "getr",
+         manifold_path, local_path, "--threads", "20", "--jobs", "10"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print(f"Manifold download failed (exit {result.returncode}):")
+        print(result.stderr)
+        sys.exit(1)
+    print("Download complete.")
+    return local_path
 
 
 def load_model(model_id, use_4bit=True):
@@ -219,8 +245,8 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        default=MODEL_ID,
-        help=f"Model ID to load (default: {MODEL_ID})",
+        default=None,
+        help="Model path to load (default: auto-download to ~/models/)",
     )
     parser.add_argument(
         "--no-4bit",
@@ -271,8 +297,11 @@ def main():
         print("No documents to process. Done.")
         return
 
+    # Resolve model path (download from manifold if needed)
+    model_path = args.model or ensure_model_local(MODEL_LOCAL_PATH, MANIFOLD_PATH)
+
     # Load model
-    model, tokenizer, device = load_model(args.model, use_4bit=not args.no_4bit)
+    model, tokenizer, device = load_model(model_path, use_4bit=not args.no_4bit)
 
     # Process documents
     results_buffer = []
