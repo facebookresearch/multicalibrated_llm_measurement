@@ -6,14 +6,14 @@
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 # pyre-ignore[21]: This code is only used in our open source CI where the dependency is present, so we can ignore this
 from folktables import ACSDataSource, ACSEmployment
-from plotly import express as px, graph_objects as go, io as pio
+from plotly import graph_objects as go, io as pio
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
@@ -72,164 +72,6 @@ def get_plotting_template() -> go.layout.Template:
     template.layout.height = 500
     template.layout.autosize = False
     return template
-
-
-def format_calibration_metrics_table(
-    calibration_metrics: dict[str, Any],
-    max_digits: int = 4,
-) -> pd.DataFrame:
-    metrics_table = pd.DataFrame(calibration_metrics).T.round(max_digits)
-    col_index = pd.MultiIndex.from_tuples(
-        [
-            (
-                ("Calibration", colname)
-                if "ECCE" in colname
-                else ("Multicalibration", colname)
-            )
-            for colname in metrics_table.columns
-        ]
-    )
-    metrics_table.columns = col_index
-    return metrics_table
-
-
-def combine_segment_calibration_plots(
-    segment_plots: dict[str, go.Figure],
-    quantity: str = "segment_ecces_sigma_scale",
-) -> go.Figure:
-    """
-    Combines multiple segment calibration error plots into a single plot with different colors for each method.
-
-    :param segment_plots: Dictionary where keys are method names and values are plotly figures from plot_segment_calibration_errors
-    :param quantity: The MCE quantity being plotted, corresponding to availabel attributes in `metrics.MulticalibrationError`
-    :returns: A Plotly Figure object
-    """
-    if not segment_plots:
-        return go.Figure()
-
-    fig = go.Figure()
-    colors = px.colors.qualitative.Set1
-
-    for i, (method_name, plot_fig) in enumerate(segment_plots.items()):
-        # Extract data from the original plot
-        for trace in plot_fig.data:
-            # Skip non-scatter traces (like bars from histograms)
-            if trace.type != "scatter":
-                continue
-
-            # Extract the original hover template and preserve all segment information
-            original_hovertemplate = (
-                trace.hovertemplate if hasattr(trace, "hovertemplate") else ""
-            )
-
-            # Build new hover template that includes method name and preserves original segment info
-            if original_hovertemplate:
-                template_lines = original_hovertemplate.split("<br>")
-                new_template_lines = [f"<b>{method_name}</b>"]
-                new_template_lines.append("Segment Size: %{x}")
-                new_template_lines.append(f"{quantity}: %{{y}}")
-
-                # Add all the segment-defining columns from the original template
-                for line in template_lines:
-                    # Skip lines that are just the main quantity or empty
-                    if (
-                        quantity not in line
-                        and "segment_size" not in line.lower()
-                        and line.strip()
-                        and "<extra></extra>" not in line
-                        and "%{x}" not in line
-                        and "%{y}" not in line
-                    ):
-                        new_template_lines.append(line)
-
-                hovertemplate = "<br>".join(new_template_lines) + "<extra></extra>"
-            else:
-                # Fallback if no original template
-                hovertemplate = (
-                    f"<b>{method_name}</b><br>"
-                    + "Segment Size: %{x}<br>"
-                    + f"{quantity}: %{{y}}<br>"
-                    + "<extra></extra>"
-                )
-
-            # Create a new trace with the method name and unique color
-            new_trace = go.Scatter(
-                x=trace.x,
-                y=trace.y,
-                mode="markers",
-                name=method_name,
-                marker={"color": colors[i % len(colors)], "size": 5, "opacity": 0.5},
-                hovertemplate=hovertemplate,
-                # Copy all hover-related data from the original trace
-                customdata=trace.customdata if hasattr(trace, "customdata") else None,
-                # Copy any other hover-related attributes
-                **{
-                    k: v
-                    for k, v in trace.to_plotly_json().items()
-                    if k.startswith("hover") and k != "hovertemplate"
-                },
-            )
-            fig.add_trace(new_trace)
-
-    # Add threshold line for sigma-scale quantities (only for sigma-scale quantities)
-    if "sigma" in quantity.lower():
-        # Get x-axis range to draw the threshold line across the full plot
-        all_x_values = []
-        for trace in fig.data:
-            if hasattr(trace, "x") and trace.x is not None:
-                all_x_values.extend([x for x in trace.x if x is not None])
-
-        if all_x_values:
-            x_min = min(all_x_values)
-            x_max = max(all_x_values)
-            # Extend slightly beyond data range for better visibility
-            x_range = [x_min * 0.8, x_max * 1.2]
-        else:
-            # Fallback range
-            x_range = [1, 1000000]
-
-        # Add threshold line as a trace that appears in the legend
-        fig.add_trace(
-            go.Scatter(
-                x=x_range,
-                y=[5, 5],  # Horizontal line at y=5
-                mode="lines",
-                line={"color": "rgba(247, 152, 111, 1)", "width": 2, "dash": "dot"},
-                name="Significant miscalibration</br></br>above this line (5σ)",
-                showlegend=True,
-                hoverinfo="skip",
-            )
-        )
-
-    fig.update_layout(
-        title="Segment Calibration Errors",
-        xaxis_title="Segment Size",
-        xaxis_type="log",
-        template="plotly_white",
-        legend={
-            "orientation": "v",
-            "yanchor": "top",
-            "y": 1,
-            "xanchor": "left",
-            "x": 1.02,
-        },
-        # Add right margin for legend
-        margin={"r": 150},
-    )
-
-    # Set y-axis title based on MCE quantity
-    if quantity == "segment_ecces":
-        fig.update_yaxes(title="ECCE", ticksuffix="%")
-    elif quantity == "segment_sigmas":
-        fig.update_yaxes(title="Standard deviation")
-    elif quantity == "segment_p_values":
-        fig.update_yaxes(title="P-value")
-    elif quantity == "segment_ecces_sigma_scale":
-        fig.update_yaxes(title="ECCE / Standard Deviation", ticksuffix="σ")
-    else:
-        fig.update_yaxes(title=quantity)
-
-    return fig
 
 
 def setup_plotting() -> None:
@@ -317,96 +159,6 @@ def calibrate_threshold_prevalence_matching(
     # This ensures that the proportion of predictions above threshold equals true prevalence
     threshold = predictions.quantile(1 - true_prevalence)
     return float(threshold)
-
-
-def calibrate_threshold_optimal_accuracy(
-    labels: pd.Series,
-    predictions: pd.Series,
-    n_thresholds: int = 100,
-) -> float:
-    """
-    Find the threshold that maximizes classification accuracy.
-
-    :param labels: True binary labels
-    :param predictions: Predicted probabilities
-    :param n_thresholds: Number of thresholds to evaluate
-    :returns: Optimal threshold
-    """
-    thresholds = np.linspace(0.01, 0.99, n_thresholds)
-    labels_arr = labels.astype(int).values
-    preds_arr = predictions.values
-
-    best_accuracy = 0.0
-    best_threshold = 0.5
-
-    for thresh in thresholds:
-        binary_preds = (preds_arr >= thresh).astype(int)
-        accuracy = (binary_preds == labels_arr).mean()
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            best_threshold = thresh
-
-    return best_threshold
-
-
-def compute_prevalence_estimates(
-    target_df: pd.DataFrame,
-    label_col: str,
-    score_col: str,
-    calibration_tpr: float,
-    calibration_fpr: float,
-    threshold: float = 0.5,
-) -> dict[str, float]:
-    """
-    Compute prevalence estimates using multiple methods.
-
-    :param target_df: DataFrame containing target population
-    :param label_col: Column name for true labels
-    :param score_col: Column name for predicted probabilities
-    :param calibration_tpr: TPR estimated from calibration set
-    :param calibration_fpr: FPR estimated from calibration set
-    :param threshold: Classification threshold for binary methods
-    :returns: Dictionary with prevalence estimates from each method
-    """
-    true_prevalence = target_df[label_col].mean()
-
-    # Raw score average
-    raw_estimate = target_df[score_col].mean()
-
-    # Classify and count (no adjustment)
-    binary_preds = (target_df[score_col] >= threshold).astype(int)
-    classify_count_estimate = binary_preds.mean()
-
-    # Rogan-Gladen adjusted count
-    rogan_gladen_estimate = compute_rogan_gladen_estimate(
-        apparent_prevalence=classify_count_estimate,
-        tpr=calibration_tpr,
-        fpr=calibration_fpr,
-    )
-
-    return {
-        "true_prevalence": true_prevalence,
-        "raw_scores": raw_estimate,
-        "classify_count": classify_count_estimate,
-        "rogan_gladen": rogan_gladen_estimate,
-    }
-
-
-def compute_prevalence_bias(
-    estimates: dict[str, float],
-) -> dict[str, float]:
-    """
-    Compute bias (estimate - true) for each estimation method.
-
-    :param estimates: Dictionary from compute_prevalence_estimates
-    :returns: Dictionary with bias for each method
-    """
-    true_prev = estimates["true_prevalence"]
-    return {
-        method: value - true_prev
-        for method, value in estimates.items()
-        if method != "true_prevalence"
-    }
 
 
 def create_logistic_pipeline() -> Pipeline:
@@ -510,3 +262,188 @@ def load_acs_employment_data(
     print(f"Dataset has {len(df)} samples")
 
     return df
+
+
+def sld_estimate(scores, source_prevalence, max_iter=100, tol=1e-6):
+    """Saerens-Latinne-Decaestecker (EMQ) prevalence estimator.
+
+    EM algorithm that iteratively re-estimates prevalence by adjusting
+    posteriors for a new prior. Assumes label shift (P(X|Y) stable).
+    """
+    p_hat = source_prevalence
+    for _ in range(max_iter):
+        ratio_pos = p_hat / source_prevalence
+        ratio_neg = (1 - p_hat) / (1 - source_prevalence)
+        adjusted = (ratio_pos * scores) / (ratio_pos * scores + ratio_neg * (1 - scores))
+        p_new = adjusted.mean()
+        if abs(p_new - p_hat) < tol:
+            break
+        p_hat = p_new
+    return p_hat
+
+
+def pacc_estimate(scores, pos_mean, neg_mean):
+    """Probabilistic Adjusted Classify & Count.
+
+    Soft-score generalization of Rogan-Gladen: uses E[h(X)|Y=1] and E[h(X)|Y=0]
+    instead of binary TPR/FPR.
+    """
+    pcc = scores.mean()
+    denom = pos_mean - neg_mean
+    if abs(denom) < 1e-10:
+        return pcc
+    return np.clip((pcc - neg_mean) / denom, 0.0, 1.0)
+
+
+def compute_all_prevalence_estimates(
+    target_df: pd.DataFrame,
+    base_col: str,
+    ir_col: str,
+    mcgrad_col: str,
+    label_col: str,
+    cal_tpr: float,
+    cal_fpr: float,
+    pacc_pos_mean: float,
+    pacc_neg_mean: float,
+    source_prevalence: float,
+    threshold: float = 0.5,
+) -> dict[str, float]:
+    """Compute prevalence estimates using all methods."""
+    true_prevalence = target_df[label_col].mean()
+
+    # Raw base model scores
+    raw_estimate = target_df[base_col].mean()
+
+    # Classify and count (threshold-based, no adjustment)
+    binary_preds = (target_df[base_col] >= threshold).astype(int)
+    classify_count = binary_preds.mean()
+
+    # Rogan-Gladen adjusted count
+    rogan_gladen = compute_rogan_gladen_estimate(classify_count, cal_tpr, cal_fpr)
+
+    # PACC (soft-score Rogan-Gladen)
+    pacc = pacc_estimate(target_df[base_col].values, pacc_pos_mean, pacc_neg_mean)
+
+    # SLD (EMQ)
+    sld = sld_estimate(target_df[base_col].values, source_prevalence)
+
+    # Isotonic regression calibrated scores
+    isotonic_estimate = target_df[ir_col].mean()
+
+    # MCGrad calibrated scores
+    mcgrad_estimate = target_df[mcgrad_col].mean()
+
+    return {
+        "True Prevalence": true_prevalence,
+        "Raw Scores": raw_estimate,
+        "Classify & Count": classify_count,
+        "Rogan-Gladen": rogan_gladen,
+        "PACC": pacc,
+        "SLD (EMQ)": sld,
+        "Isotonic Regression": isotonic_estimate,
+        "MCGrad": mcgrad_estimate,
+    }
+
+
+def resample_with_age_shift(
+    df: pd.DataFrame,
+    age_col: str = "AGEP",
+    shift: str = "original",
+    n_samples: int = 20_000,
+    random_state: int = 42,
+) -> pd.DataFrame:
+    """
+    Resample df with importance weights that shift the age distribution.
+
+    shift options:
+      - "original": uniform weights (baseline)
+      - "young": heavily oversample ages 16-30
+      - "old": heavily oversample ages 60+
+      - "bimodal": oversample both young and old, undersample middle
+    """
+    ages = df[age_col].values
+
+    if shift == "original":
+        weights = np.ones(len(df))
+    elif shift == "young":
+        # Exponentially favor younger ages
+        weights = np.exp(-0.08 * (ages - 16))
+        weights = np.where(ages <= 30, weights * 5, weights)
+    elif shift == "old":
+        # Exponentially favor older ages
+        weights = np.exp(0.08 * (ages - 50))
+        weights = np.where(ages >= 60, weights * 5, weights)
+    elif shift == "bimodal":
+        # Favor both tails — young and old
+        center = 40
+        weights = np.exp(0.04 * np.abs(ages - center))
+        weights = np.where((ages <= 25) | (ages >= 65), weights * 3, weights)
+    else:
+        raise ValueError(f"Unknown shift: {shift}")
+
+    weights = weights / weights.sum()
+
+    return df.sample(n=n_samples, weights=weights, replace=True, random_state=random_state)
+
+
+def compute_bootstrap_mse(
+    source_df: pd.DataFrame,
+    shift: str,
+    base_col: str,
+    ir_col: str,
+    mcgrad_col: str,
+    label_col: str,
+    cal_tpr: float,
+    cal_fpr: float,
+    pacc_pos_mean: float,
+    pacc_neg_mean: float,
+    source_prevalence: float,
+    threshold: float,
+    n_bootstrap: int = 200,
+    n_samples: int = 20_000,
+) -> dict[str, dict[str, float]]:
+    """Bootstrap resampling to compute bias, variance, and RMSE of prevalence estimators."""
+    methods_list = ["Raw Scores", "Classify & Count", "Rogan-Gladen", "PACC",
+                    "SLD (EMQ)", "Isotonic Regression", "MCGrad"]
+    estimates_by_method = {m: [] for m in methods_list}
+    true_prevs = []
+
+    for b in range(n_bootstrap):
+        syn_df = resample_with_age_shift(source_df, shift=shift, n_samples=n_samples, random_state=b)
+        est = compute_all_prevalence_estimates(
+            syn_df, base_col, ir_col, mcgrad_col, label_col,
+            cal_tpr, cal_fpr, pacc_pos_mean, pacc_neg_mean, source_prevalence, threshold
+        )
+        true_prevs.append(est["True Prevalence"])
+        for m in methods_list:
+            estimates_by_method[m].append(est[m])
+
+    results = {}
+    for m in methods_list:
+        ests = np.array(estimates_by_method[m])
+        trues = np.array(true_prevs)
+        errors = ests - trues
+        results[m] = {
+            "bias": np.mean(errors) * 100,  # in percentage points
+            "variance": np.var(errors) * 100**2,  # in pp²
+            "rmse": np.sqrt(np.mean(errors**2)) * 100,  # in pp
+        }
+    results["True Prevalence"] = np.mean(true_prevs)
+    return results
+
+
+def compute_bias_table(estimates: dict[str, float]) -> pd.DataFrame:
+    """Create a DataFrame showing estimates and bias for each method."""
+    true_prev = estimates["True Prevalence"]
+    rows = []
+    for method, estimate in estimates.items():
+        if method == "True Prevalence":
+            continue
+        bias = estimate - true_prev
+        rows.append({
+            "Method": method,
+            "Estimate": estimate,
+            "Bias": bias,
+            "Relative Bias (%)": 100 * bias / true_prev if true_prev > 0 else 0,
+        })
+    return pd.DataFrame(rows).set_index("Method")
