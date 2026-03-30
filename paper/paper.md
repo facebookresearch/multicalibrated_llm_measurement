@@ -100,26 +100,28 @@ To illustrate how distribution shift can lead to strongly biased measurements, w
 
 *Figure 2: Prevalence estimation bias (percentage points) under synthetic age distribution shift, for in-distribution data (left) and out-of-distribution states (right).*
 
-| Setting | Age Dist.    | True Prev. | Raw   | CC    | RG      | PACC    | SLD     | Iso.  | MCGrad |
-|---------|--------------|------------|-------|-------|---------|---------|---------|-------|--------|
-| In-Dist | Original     | 46.0%      | -0.31 | -0.07 | +0.26   | -0.07   | +0.01   | -0.30 | -0.27  |
-| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -11.95  | +2.04 | -0.11  |
-| In-Dist | Old-skewed   | 16.8%      | +7.23 | -6.62 | -16.77  | -16.77  | -16.76  | +6.65 | +0.22  |
-| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.14  | +4.33 | +0.12  |
-| OOD     | Original     | 45.1%      | +1.15 | +1.40 | +2.12   | +2.13   | +2.25   | +1.17 | +1.35  |
-| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -11.38  | +3.08 | +0.88  |
-| OOD     | Old-skewed   | 16.0%      | +8.47 | -5.64 | -15.97  | -15.97  | -15.97  | +7.91 | +1.01  |
-| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.20  | +5.69 | +1.13  |
+| Setting | Age Dist.    | True Prev. | Raw   | CC    | RG      | PACC    | SLD     | IPW   | Iso.  | MCGrad |
+|---------|--------------|------------|-------|-------|---------|---------|---------|-------|-------|--------|
+| In-Dist | Original     | 46.0%      | -0.31 | -0.07 | +0.26   | -0.07   | +0.01   | -0.3  | -0.30 | -0.27  |
+| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -11.95  | -0.3  | +2.04 | -0.11  |
+| In-Dist | Old-skewed   | 16.8%      | +7.23 | -6.62 | -16.77  | -16.77  | -16.76  | -1.2  | +6.65 | +0.22  |
+| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.14  | +4.7  | +4.33 | +0.12  |
+| OOD     | Original     | 45.1%      | +1.15 | +1.40 | +2.12   | +2.13   | +2.25   | +1.7  | +1.17 | +1.35  |
+| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -11.38  | +0.8  | +3.08 | +0.88  |
+| OOD     | Old-skewed   | 16.0%      | +8.47 | -5.64 | -15.97  | -15.97  | -15.97  | +0.1  | +7.91 | +1.01  |
+| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.20  | +6.3  | +5.69 | +1.13  |
 
-*Table 1: Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift. RG = Rogan-Gladen, Iso. = Isotonic regression.*
+*Table 1: Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift. IPW = importance-weighted prevalence estimation (target-specific density ratio via logistic regression). RG = Rogan-Gladen, Iso. = Isotonic regression.*
 
 **Results.** With no age shift, all methods produce approximately unbiased estimates (Table 1). Under shift, the methods diverge sharply.
 
-Rogan-Gladen exhibits catastrophic failure, with bias of -12.8 to -18.6 percentage points in the in-distribution setting, effectively estimating zero or negative prevalence when the true rate is 13--21%. PACC and SLD show comparable bias (-12 to -20pp and -11 to -16pp respectively), confirming the theoretical prediction: all three methods rely on calibration quantities (binary error rates, conditional score means, or class-conditional score distributions) that shift with population composition. Isotonic regression and raw scores show more moderate but still substantial bias of 2--8 percentage points, reflecting the instability of global calibration curves under compositional change. Classify & Count shows bias of up to 6.6 percentage points as the learned threshold loses its validity.
+Rogan-Gladen exhibits catastrophic failure, with bias of -12.8 to -18.6 percentage points in the in-distribution setting, effectively estimating zero or negative prevalence when the true rate is 13--21%. PACC and SLD show comparable bias (-12 to -20pp and -11 to -16pp respectively), confirming the theoretical prediction: all three methods rely on calibration quantities (binary error rates, conditional score means, or class-conditional score distributions) that shift with population composition. Isotonic regression and raw scores show more moderate but still substantial bias of 2--8 percentage points, reflecting the instability of global calibration curves under compositional change.
 
-MCGrad produces near-zero bias across all in-distribution age-shift scenarios ($\leq 0.27$pp). Because MCGrad is multicalibrated with respect to age and other features, its predictions are correct *conditional on* these covariates. When the age distribution shifts, the feature-conditional predictions remain valid, and their average tracks the true prevalence. Bootstrap resampling (200 iterations per scenario) confirms that MCGrad also achieves the lowest RMSE, indicating that the bias reduction does not come at the cost of increased variance.
+IPW, the standard covariate-shift baseline, performs well on simple shifts (young-skewed: -0.3pp, old-skewed: -1.2pp) but shows substantial bias on the bimodal shift (+4.7pp in-distribution, +6.3pp OOD). The bimodal shift creates a complex, non-monotonic density ratio that logistic regression does not capture well. IPW also requires re-estimating density ratios for each target population, unlike MCGrad which is fitted once.
 
-In the OOD setting, where the model is applied to states never seen during training while also shifting the age distribution, MCGrad's advantage persists with modestly larger bias (0.88--1.35pp), reflecting the additional geographic shift along a dimension not included in the calibration features. Even so, MCGrad's bias remains 3--8$\times$ smaller than the next best method.
+MCGrad produces near-zero bias across all in-distribution age-shift scenarios ($\leq 0.27$pp), including the bimodal shift where IPW struggles. Because MCGrad is multicalibrated with respect to age and other features, its predictions are correct *conditional on* these covariates. When the age distribution shifts, the feature-conditional predictions remain valid, and their average tracks the true prevalence. Bootstrap resampling (200 iterations per scenario) confirms that MCGrad also achieves the lowest RMSE, indicating that the bias reduction does not come at the cost of increased variance.
+
+In the OOD setting, where the model is applied to states never seen during training while also shifting the age distribution, MCGrad's advantage persists with modestly larger bias (0.88--1.35pp), reflecting the additional geographic shift along a dimension not included in the calibration features. IPW shows comparable OOD performance on simple shifts but again fails on the bimodal shift (+6.3pp).
 
 ## LLM-based topic classification under cross-national shift
 
