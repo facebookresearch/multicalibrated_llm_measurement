@@ -1,23 +1,23 @@
 """
-LLM inference pipeline for CAP parliamentary text classification.
+LLM inference pipeline for CAP text classification — verbalized confidence.
 
-Classifies parliamentary questions as law/crime-related (CAP topic 12)
-using Llama 3.1 8B (4-bit) via MLX on Apple Silicon.
+MLX version for Apple Silicon. Uses Llama 3.1 8B Instruct (4-bit) to classify
+parliamentary questions as law/crime-related (CAP topic 12).
 
-Extracts log-probabilities for Yes/No tokens to produce a continuous
-score in [0, 1] for each document.
+Instead of extracting Yes/No token logprobs, asks the model to state its
+confidence as a number (0-100), producing less bimodal score distributions.
+
+Output format is identical to llm_inference.py for downstream compatibility.
 """
 
 import argparse
 import csv
-import json
-import math
 import os
+import re
 import sys
 import time
 from pathlib import Path
 
-import mlx.core as mx
 import mlx_lm
 from tqdm import tqdm
 
@@ -41,9 +41,10 @@ PROMPT_TEMPLATE = (
     "domestic violence, child welfare, and family law; domestic criminal and "
     "civil codes; crime control, prevention, and impact of crime; and "
     "police and domestic security responses to terrorism. "
-    "Respond Yes or No.\n\n"
+    "Rate your confidence from 0 (definitely not) to 100 (definitely yes). "
+    "Respond with only a number.\n\n"
     "Text: {text}\n\n"
-    "Answer:"
+    "Confidence:"
 )
 
 LANGUAGE_MAP = {
@@ -60,58 +61,6 @@ LANGUAGE_MAP = {
 SAVE_INTERVAL = 1000
 
 
-def get_yes_no_token_ids(tokenizer):
-    """Find token IDs for 'Yes' and 'No' (and common variants)."""
-    yes_candidates = ["Yes", "yes", " Yes", " yes"]
-    no_candidates = ["No", "no", " No", " no"]
-
-    yes_ids = set()
-    no_ids = set()
-    for w in yes_candidates:
-        ids = tokenizer.encode(w, add_special_tokens=False)
-        if len(ids) == 1:
-            yes_ids.add(ids[0])
-    for w in no_candidates:
-        ids = tokenizer.encode(w, add_special_tokens=False)
-        if len(ids) == 1:
-            no_ids.add(ids[0])
-
-    if not yes_ids or not no_ids:
-        raise ValueError(
-            f"Could not find single-token encodings for Yes/No. "
-            f"Yes IDs: {yes_ids}, No IDs: {no_ids}"
-        )
-
-    return list(yes_ids), list(no_ids)
-
-
-def compute_score(logprobs, yes_ids, no_ids):
-    """
-    Compute P(Yes) / (P(Yes) + P(No)) from the log-probability vector.
-
-    logprobs: mx.array of shape (vocab_size,) — log-probabilities over the
-              full vocabulary for the first generated token.
-    yes_ids: list of token IDs corresponding to "Yes"
-    no_ids:  list of token IDs corresponding to "No"
-
-    Returns a float in [0, 1].
-    """
-    # Gather log-probs for yes/no token IDs, take the max (most likely variant)
-    yes_logprobs = [logprobs[tid].item() for tid in yes_ids]
-    no_logprobs = [logprobs[tid].item() for tid in no_ids]
-
-    yes_lp = max(yes_logprobs)
-    no_lp = max(no_logprobs)
-
-    # Convert to probabilities via logsumexp for numerical stability
-    max_lp = max(yes_lp, no_lp)
-    p_yes = math.exp(yes_lp - max_lp)
-    p_no = math.exp(no_lp - max_lp)
-
-    score = p_yes / (p_yes + p_no)
-    return score
-
-
 def format_prompt(text, language, tokenizer):
     """Format the classification prompt using the chat template."""
     user_message = PROMPT_TEMPLATE.format(language=language, text=text)
@@ -122,24 +71,44 @@ def format_prompt(text, language, tokenizer):
     return prompt_str
 
 
-def classify_single(text, language, model, tokenizer, yes_ids, no_ids):
+def parse_confidence(text):
     """
-    Classify a single document and return the law/crime score.
+    Parse a confidence number (0-100) from generated text.
 
-    Returns (score, generated_token_text) or raises on failure.
+    Handles common model outputs like "85", "85%", "85.", " 85\n", etc.
+    Returns a float in [0, 1] or None if parsing fails.
+    """
+    text = text.strip()
+    match = re.search(r"(\d+(?:\.\d+)?)", text)
+    if match is None:
+        return None
+    value = float(match.group(1))
+    if value > 100:
+        return None
+    return value / 100.0
+
+
+def classify_single(text, language, model, tokenizer):
+    """
+    Classify a single document via verbalized confidence.
+
+    Returns (score, raw_text) or raises on failure.
     """
     prompt_str = format_prompt(text, language, tokenizer)
 
-    # We only need the first token's logprobs
+    # Generate up to 10 tokens (enough for "85%" or "100")
+    raw_text = ""
     for response in mlx_lm.stream_generate(
-        model, tokenizer, prompt_str, max_tokens=1
+        model, tokenizer, prompt_str, max_tokens=10
     ):
-        logprobs = response.logprobs
-        token_text = response.text
-        break
+        raw_text += response.text
 
-    score = compute_score(logprobs, yes_ids, no_ids)
-    return score, token_text
+    raw_text = raw_text.strip()
+    score = parse_confidence(raw_text)
+    if score is None:
+        raise ValueError(f"Could not parse confidence from: {raw_text!r}")
+
+    return score, raw_text
 
 
 def load_input_data(input_path):
@@ -179,7 +148,8 @@ def save_results(results, output_path, mode="a"):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Classify parliamentary texts as law/crime-related using Llama 3.1 8B via MLX."
+        description="Classify parliamentary texts using verbalized confidence "
+        "(0-100 scale) via Llama 3.1 8B on MLX."
     )
     parser.add_argument(
         "--input", required=True, help="Path to input CSV with columns: id, text"
@@ -243,7 +213,6 @@ def main():
             rows = [r for r in rows if r["id"] not in done_ids]
             print(f"  Resuming: {len(done_ids)} already done, {len(rows)} remaining.")
     else:
-        # Start fresh — write header
         if os.path.exists(args.output):
             os.remove(args.output)
 
@@ -257,17 +226,13 @@ def main():
     model, tokenizer = mlx_lm.load(args.model)
     print(f"  Model loaded in {time.time() - t0:.1f}s.")
 
-    # Find Yes/No token IDs
-    yes_ids, no_ids = get_yes_no_token_ids(tokenizer)
-    print(f"  Yes token IDs: {yes_ids}")
-    print(f"  No token IDs: {no_ids}")
-
     # Process documents
     results_buffer = []
     n_errors = 0
+    n_parse_failures = 0
     t_start = time.time()
 
-    for i, row in enumerate(tqdm(rows, desc="Classifying")):
+    for i, row in enumerate(tqdm(rows, desc="Classifying (verbalized)")):
         doc_id = row["id"]
         text = row["text"]
 
@@ -282,22 +247,30 @@ def main():
                   "and no --language flag set.")
             sys.exit(1)
 
-        # Truncate very long texts to avoid context overflow
-        # Llama 3.1 has 128K context but we keep it short for speed
+        # Truncate very long texts
         max_chars = 4000
         if len(text) > max_chars:
             text = text[:max_chars]
 
         try:
-            score, token_text = classify_single(
-                text, language, model, tokenizer, yes_ids, no_ids
+            score, raw_text = classify_single(
+                text, language, model, tokenizer
             )
             results_buffer.append({
                 "id": doc_id,
                 "score": f"{score:.6f}",
-                "token": token_text.strip(),
+                "token": raw_text,
                 "language": language,
                 "error": "",
+            })
+        except ValueError as e:
+            n_parse_failures += 1
+            results_buffer.append({
+                "id": doc_id,
+                "score": "",
+                "token": str(e),
+                "language": language,
+                "error": f"parse_failure: {e}",
             })
         except Exception as e:
             n_errors += 1
@@ -319,7 +292,8 @@ def main():
             remaining = (len(rows) - docs_done) / rate if rate > 0 else 0
             tqdm.write(
                 f"  Saved checkpoint at {docs_done}/{len(rows)} docs "
-                f"({rate:.1f} docs/sec, ~{remaining/3600:.1f}h remaining)"
+                f"({rate:.1f} docs/sec, ~{remaining/3600:.1f}h remaining) "
+                f"[{n_parse_failures} parse failures, {n_errors} errors]"
             )
 
     # Final save
@@ -328,7 +302,8 @@ def main():
     elapsed = time.time() - t_start
     print(f"\nDone. Processed {len(rows)} documents in {elapsed:.0f}s "
           f"({len(rows)/elapsed:.1f} docs/sec).")
-    print(f"  Errors: {n_errors}")
+    print(f"  Parse failures: {n_parse_failures}")
+    print(f"  Other errors: {n_errors}")
     print(f"  Output: {args.output}")
 
 

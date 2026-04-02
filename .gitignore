@@ -46,6 +46,7 @@ env/
 # Jupyter Notebook
 .ipynb_checkpoints/
 *.ipynb_checkpoints/
+*_executed.ipynb
 
 # IDE
 .idea/
