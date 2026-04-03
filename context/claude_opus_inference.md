@@ -9,12 +9,12 @@ The two campaigns were run independently to avoid anchoring contamination:
 1. **Campaign 1 (Binary)**: Simple Yes/No classification only
 2. **Campaign 2 (P(Y/N))**: Direct probability elicitation without first committing to an answer
 
-Each campaign classified all 30,000 documents. The model used is **Opus 4.6** (sub-agents inherited the parent model). Despite the directory legacy naming containing "sonnet", all inference was done with Opus.
+Each campaign classified all 30,000 documents. The model used is **Opus 4.6** (sub-agents inherited the parent model). All inference was done with Opus.
 
 ## Data
 
 ### Input
-- **Source**: `cap_analysis/data/sonnet_30k_sample.csv` (30,009 rows, stratified sample from `full_sample.csv`)
+- **Source**: `cap_analysis/data/opus_30k_sample.csv` (30,009 rows, stratified sample from `full_sample.csv`)
 - **Shards**: `cap_analysis/data/claude_shards_30k/shard_{0-299}.json` (300 files, 100 docs each)
   - Each shard is a JSON array of objects with fields: `id`, `text`, `language`, `label`
 - **Sub-populations** (5K docs each, 6 total):
@@ -107,7 +107,7 @@ Opus is slightly better calibrated and more discriminative than Sonnet on this t
 
 The main analysis notebook is `cap_analysis/cap_analysis.ipynb`. It currently uses Llama 3.3 70B verbalized 2-stage scores. To integrate Opus scores:
 
-1. **Merge shards into a single file** aligned with `full_sample.csv` or `sonnet_30k_sample.csv`:
+1. **Merge shards into a single file** aligned with `full_sample.csv` or `opus_30k_sample.csv`:
    - The `id` column in the shard CSVs maps to the `id` column in the sample CSVs
    - Campaign 2's `score` column is the primary input for calibration methods
 
