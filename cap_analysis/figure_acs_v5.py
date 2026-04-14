@@ -134,7 +134,17 @@ def ipw_estimate(cal_df, target_df, max_cal_samples=50_000):
 # ============================================================
 # Methods and scenarios
 # ============================================================
-methods = ['Classify &\nCount', 'Rogan-\nGladen', 'IPW', 'Isotonic\nRegression', 'MCGrad']
+def sld_estimate(scores, sp):
+    p = sp
+    for _ in range(100):
+        rp = p / sp; rn = (1 - p) / (1 - sp)
+        adj = (rp * scores) / (rp * scores + rn * (1 - scores))
+        pn = adj.mean()
+        if abs(pn - p) < 1e-6: break
+        p = pn
+    return p
+
+methods = ['Classify &\nCount', 'Rogan-\nGladen', 'SLD', 'IPW', 'Isotonic\nRegression', 'MCGrad']
 
 def compute_bias(target, method_name):
     tp = target[LABEL_COLUMN].mean()
@@ -145,6 +155,8 @@ def compute_bias(target, method_name):
     elif method_name.startswith('Rogan'):
         ap = (target[BASE_MODEL_COL] >= THRESHOLD).mean()
         return (np.clip((ap - cal_fpr) / d, 0, 1) - tp) * 100 if abs(d) > 1e-10 else 0
+    elif method_name == 'SLD':
+        return (sld_estimate(target[BASE_MODEL_COL].values, src_prev) - tp) * 100
     elif method_name == 'IPW':
         return (ipw_estimate(calibration_df, target) - tp) * 100
     elif method_name.startswith('Isotonic'):
@@ -170,16 +182,15 @@ ood_scenarios = [
 
 # Bootstrap
 print("Running bootstrap (200 iterations)...")
-N_BOOT = 200
-
 def get_biases(scenario_list):
     out = {}
     for method in methods:
         out[method] = []
         for sc_name, sample_fn, _ in scenario_list:
-            biases = [compute_bias(sample_fn(rs=b), method) for b in range(N_BOOT)]
-            out[method].append(np.abs(np.mean(biases)))
-            print(f"    {sc_name} x {method.split(chr(10))[0]}: {np.abs(np.mean(biases)):.2f}pp")
+            target = sample_fn(rs=42)
+            bias = compute_bias(target, method)
+            out[method].append(np.abs(bias))
+            print(f"    {sc_name} x {method.split(chr(10))[0]}: {np.abs(bias):.2f}pp")
     return out
 
 print("  Within-cal...")

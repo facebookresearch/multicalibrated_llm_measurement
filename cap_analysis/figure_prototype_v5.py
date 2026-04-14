@@ -121,7 +121,19 @@ def rs_doctype(df, rs=42):
     w = np.where(df['doc_type'] == 'bill', 5.0, 1.0); w /= w.sum()
     return df.sample(n=min(N, len(df)), weights=w, replace=True, random_state=rs)
 
-methods = ['Classify &\nCount', 'Rogan-\nGladen', 'IPW', 'Isotonic\nRegression', 'MCGrad\n(binary)', 'MCGrad\n(scores)']
+def sld_estimate(scores, src_prev):
+    p = src_prev
+    for _ in range(100):
+        rp = p / src_prev; rn = (1 - p) / (1 - src_prev)
+        adj = (rp * scores) / (rp * scores + rn * (1 - scores))
+        pn = adj.mean()
+        if abs(pn - p) < 1e-6: break
+        p = pn
+    return p
+
+SRC_PREV = cal_df['law_crime'].mean()
+
+methods = ['Classify &\nCount', 'Rogan-\nGladen', 'SLD', 'IPW', 'Isotonic\nRegression', 'MCGrad\n(binary)', 'MCGrad\n(scores)']
 
 within_cal_scenarios = [
     ('Baseline', lambda rs: test_df.sample(n=min(N, len(test_df)), replace=True, random_state=rs), 'o'),
@@ -141,6 +153,8 @@ def compute_bias(target, method_name):
     elif method_name.startswith('Rogan'):
         ap = target['llm_yes'].mean()
         return (np.clip((ap - cal_fpr) / d, 0, 1) - tp) * 100 if abs(d) > 1e-10 else 0
+    elif method_name == 'SLD':
+        return (sld_estimate(target['pyn_score'].values, SRC_PREV) - tp) * 100
     elif method_name == 'IPW':
         return (ipw_estimate(cal_df, target) - tp) * 100
     elif method_name.startswith('Isotonic'):
