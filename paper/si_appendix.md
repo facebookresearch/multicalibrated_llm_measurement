@@ -136,7 +136,13 @@ The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, d
 
 *CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
 
-## S4. Claude Opus Score Distribution
+## S4. Simulation: All Methods
+
+![](images/figure_sim_lineplot_all.png){width=100%}
+
+*Figure S2: Simulation bias curves for all seven methods. Rogan-Gladen and PACC exhibit catastrophic failure (bias exceeding -200% at extreme shifts). SLD shows large bias under covariate shift because it assumes label shift. The uncalibrated baseline shows moderate bias. MCGrad maintains near-zero bias throughout.*
+
+## S5. Claude Opus Score Distribution
 
 ![Figure S1](images/figure_cap_score_distribution.png){width=100%}
 
