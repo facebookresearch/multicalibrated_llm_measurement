@@ -133,6 +133,10 @@ The calibration set ($n \approx 13{,}400$) draws equally from four sub-populatio
 
 For the binary-label condition, MCGrad receives the LLM's Yes/No classification as a categorical input feature, with all initial scores set to the calibration-set base rate. MCGrad then learns feature-conditional prevalence estimates from the label and metadata alone, without any probability score from the LLM. For the probability-score condition, MCGrad receives the LLM's $P(\text{Yes})$ directly as the input score and calibrates it conditional on the same metadata features.
 
+![Figure 3](images/figure_cap_score_distribution.png){width=100%}
+
+*Figure 3: Claude Opus 4.6 P(Yes) score distribution by label across six CAP sub-populations. Scores are well-separated (mean 0.75 for positives vs. 0.07 for negatives) with 43 unique values and no boundary mass.*
+
 **Results.** Table 2 shows prevalence estimation bias across five scenarios: a baseline with no shift, two within-calibration shifts (country composition, document type composition), and two OOD scenarios.
 
 | Scenario | Shift Type | True Prev. | CC | RG | IPW | Iso. | MC (binary) | MC (scores) |
@@ -144,6 +148,10 @@ For the binary-label condition, MCGrad receives the LLM's Yes/No classification 
 | Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | -4.4 | +2.4 | +0.4 | +1.6 |
 
 *Table 2: Prevalence estimation bias (pp) for Law & Crime topic under cross-national and document-type shift. CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores. All methods except IPW are calibrated once on source data.*
+
+![Figure 4](images/figure_cap_shift_gradient.png){width=100%}
+
+*Figure 4: Prevalence estimation bias (pp) across the shift gradient. MCGrad achieves near-zero bias within the calibration distribution in both binary-label and probability-score conditions. On OOD populations (unseen document type), bias increases but remains smaller than all other methods.*
 
 The broken workflow is clearly visible: Classify & Count, the standard practice of counting positive LLM classifications, produces bias of +1.6 to +4.8pp across all scenarios. The Rogan-Gladen adjustment, the natural correction a practitioner might apply to binary labels, reduces bias within calibration but still shows +3.1 to +3.7pp on OOD populations.
 
