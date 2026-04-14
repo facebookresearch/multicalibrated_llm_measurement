@@ -107,7 +107,36 @@ Verbalized confidence elicitation partially addresses both problems by producing
 
 The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, diverges catastrophically on Llama's verbalized confidence scores, producing prevalence estimates biased by +33 to +60pp. This occurs because the verbalized scores are not calibrated posteriors, violating SLD's core assumption. PACC shows moderate bias (+0.6 to +5.9pp within calibration, +2.4 to +5.9pp OOD). Full results including SLD and PACC are available in the replication code.
 
-## S3. Claude Opus Score Distribution
+## S3. Detailed Results Tables
+
+### Table S1: ACS Employment Prevalence Estimation Bias
+
+| Setting | Age Dist.    | True Prev. | Raw   | CC    | RG      | PACC    | SLD     | IPW   | Iso.  | MCGrad |
+|---------|--------------|------------|-------|-------|---------|---------|---------|-------|-------|--------|
+| In-Dist | Original     | 46.0%      | -0.31 | -0.07 | +0.26   | -0.07   | +0.01   | -0.3  | -0.30 | -0.27  |
+| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -11.95  | -0.3  | +2.04 | -0.11  |
+| In-Dist | Old-skewed   | 16.8%      | +7.23 | -6.62 | -16.77  | -16.77  | -16.76  | -1.2  | +6.65 | +0.22  |
+| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.14  | +4.7  | +4.33 | +0.12  |
+| OOD     | Original     | 45.1%      | +1.15 | +1.40 | +2.12   | +2.13   | +2.25   | +1.7  | +1.17 | +1.35  |
+| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -11.38  | +0.8  | +3.08 | +0.88  |
+| OOD     | Old-skewed   | 16.0%      | +8.47 | -5.64 | -15.97  | -15.97  | -15.97  | +0.1  | +7.91 | +1.01  |
+| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.20  | +6.3  | +5.69 | +1.13  |
+
+*Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift. Raw = uncalibrated score average, CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted prevalence estimation, Iso. = Isotonic regression. Bootstrap RMSE (200 iterations) closely tracks absolute bias in all scenarios.*
+
+### Table S2: CAP Law & Crime Prevalence Estimation Bias (Claude Opus 4.6)
+
+| Scenario | Shift Type | True Prev. | CC | RG | IPW | Iso. | MC (binary) | MC (scores) |
+|---|---|---|---|---|---|---|---|---|
+| Baseline | None | 8.1% | +1.9 | +0.5 | -0.0 | -0.3 | -0.2 | -0.2 |
+| Country shift | Within-cal. | 8.9% | +2.5 | +1.7 | -0.4 | +0.3 | -0.5 | -0.2 |
+| Doc-type shift | Within-cal. | 6.8% | +1.6 | -0.3 | -0.4 | -0.2 | -0.2 | +0.0 |
+| Spain media | OOD doc type | 19.5% | +3.6 | +3.1 | -12.1 | -2.7 | -2.5 | -4.4 |
+| Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | -4.4 | +2.4 | +0.4 | +1.6 |
+
+*CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
+
+## S4. Claude Opus Score Distribution
 
 ![Figure S1](images/figure_cap_score_distribution.png){width=100%}
 

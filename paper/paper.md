@@ -86,24 +86,11 @@ Before applying multicalibration to LLM-generated scores, which present addition
 
 **Age distribution shift.** Employment rates vary dramatically by age: approximately 47% for ages 16--24, 76% for ages 25--54, 61% for ages 55--64, and 17% for ages 65+. This makes age an ideal dimension along which to construct meaningful distribution shifts. We create synthetic target populations by resampling test data with shifted age distributions: young-skewed (oversampling ages 16--30), old-skewed (oversampling ages 60+), and bimodal (oversampling both tails). The resulting populations have true employment rates ranging from 12.8% to 46.0%. All calibration parameters are estimated once on the original calibration set and held fixed across scenarios.
 
-![Figure 2](images/figure2_acs_age_shift.png){width=100%}
+![Figure 2](images/figure_acs_v5.png){width=100%}
 
-*Figure 2: Prevalence estimation bias (percentage points) under synthetic age distribution shift, for in-distribution data (left) and out-of-distribution states (right).*
+*Figure 2: Prevalence estimation |bias| (percentage points) under synthetic age distribution shift, for in-distribution states (left) and out-of-distribution states (right). Each marker shape represents a different age shift scenario; horizontal lines show the mean across scenarios. Full numerical results in SI Appendix Table S1.*
 
-| Setting | Age Dist.    | True Prev. | Raw   | CC    | RG      | PACC    | SLD     | IPW   | Iso.  | MCGrad |
-|---------|--------------|------------|-------|-------|---------|---------|---------|-------|-------|--------|
-| In-Dist | Original     | 46.0%      | -0.31 | -0.07 | +0.26   | -0.07   | +0.01   | -0.3  | -0.30 | -0.27  |
-| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -11.95  | -0.3  | +2.04 | -0.11  |
-| In-Dist | Old-skewed   | 16.8%      | +7.23 | -6.62 | -16.77  | -16.77  | -16.76  | -1.2  | +6.65 | +0.22  |
-| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.14  | +4.7  | +4.33 | +0.12  |
-| OOD     | Original     | 45.1%      | +1.15 | +1.40 | +2.12   | +2.13   | +2.25   | +1.7  | +1.17 | +1.35  |
-| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -11.38  | +0.8  | +3.08 | +0.88  |
-| OOD     | Old-skewed   | 16.0%      | +8.47 | -5.64 | -15.97  | -15.97  | -15.97  | +0.1  | +7.91 | +1.01  |
-| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.20  | +6.3  | +5.69 | +1.13  |
-
-*Table 1: Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift. IPW = importance-weighted prevalence estimation (target-specific density ratio via logistic regression). RG = Rogan-Gladen, Iso. = Isotonic regression.*
-
-**Results.** With no age shift, all methods produce approximately unbiased estimates (Table 1). Under shift, the methods diverge sharply. Rogan-Gladen, PACC, and SLD exhibit catastrophic failure (-12 to -20pp), confirming the theoretical prediction: all three rely on calibration quantities that shift with population composition. Isotonic regression and raw scores show moderate but substantial bias (2--8pp). IPW performs well on simple shifts ($\leq 1.2$pp) but fails on the bimodal shift (+4.7pp in-distribution, +6.3pp OOD) where the density ratio is hard to model.
+**Results.** With no age shift, all methods produce approximately unbiased estimates (Figure 2). Under shift, the methods diverge sharply. Rogan-Gladen, PACC, and SLD exhibit catastrophic failure (-12 to -20pp), confirming the theoretical prediction: all three rely on calibration quantities that shift with population composition. Isotonic regression and raw scores show moderate but substantial bias (2--8pp). IPW performs well on simple shifts ($\leq 1.2$pp) but fails on the bimodal shift (+4.7pp in-distribution, +6.3pp OOD) where the density ratio is hard to model.
 
 MCGrad produces near-zero bias across all in-distribution scenarios ($\leq 0.27$pp), including the bimodal shift where IPW struggles. In the OOD setting (held-out states with age shift), MCGrad's bias increases modestly (0.88--1.35pp), reflecting geographic shift along an uncalibrated dimension. Even so, MCGrad maintains the lowest bias and RMSE across all scenarios.
 
@@ -119,19 +106,9 @@ For the binary-label condition, MCGrad receives the LLM's Yes/No classification 
 
 **Results.** Table 2 shows prevalence estimation bias across five scenarios: a baseline with no shift, two within-calibration shifts (country composition, document type composition), and two OOD scenarios.
 
-| Scenario | Shift Type | True Prev. | CC | RG | IPW | Iso. | MC (binary) | MC (scores) |
-|---|---|---|---|---|---|---|---|---|
-| Baseline | None | 8.1% | +1.9 | +0.5 | -0.0 | -0.3 | -0.2 | -0.2 |
-| Country shift | Within-cal. | 8.9% | +2.5 | +1.7 | -0.4 | +0.3 | -0.5 | -0.2 |
-| Doc-type shift | Within-cal. | 6.8% | +1.6 | -0.3 | -0.4 | -0.2 | -0.2 | +0.0 |
-| Spain media | OOD doc type | 19.5% | +3.6 | +3.1 | -12.1 | -2.7 | -2.5 | -4.4 |
-| Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | -4.4 | +2.4 | +0.4 | +1.6 |
+![Figure 3](images/figure_cap_v5.png){width=100%}
 
-*Table 2: Prevalence estimation bias (pp) for Law & Crime topic under cross-national and document-type shift. CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores. All methods except IPW are calibrated once on source data.*
-
-![Figure 3](images/figure_cap_shift_gradient.png){width=100%}
-
-*Figure 3: Prevalence estimation bias (pp) across the shift gradient. MCGrad achieves near-zero bias within the calibration distribution in both binary-label and probability-score conditions. On OOD populations (unseen document type), bias increases but remains smaller than all other methods.*
+*Figure 3: Prevalence estimation |bias| (percentage points) across the shift gradient. Each marker shape represents a different shift scenario; horizontal lines show the mean across scenarios. MCGrad achieves near-zero bias within the calibration distribution in both binary-label and probability-score conditions. Full numerical results in SI Appendix Table S2.*
 
 The broken workflow is clearly visible: Classify & Count, the standard practice of counting positive LLM classifications, produces bias of +1.6 to +4.8pp across all scenarios. The Rogan-Gladen adjustment, the natural correction a practitioner might apply to binary labels, reduces bias within calibration but still shows +3.1 to +3.7pp on OOD populations.
 
