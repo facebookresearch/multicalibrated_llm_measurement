@@ -151,7 +151,7 @@ MCGrad on binary labels achieves near-zero bias within the calibration distribut
 
 IPW, the standard covariate-shift method, achieves near-zero within-calibration bias but fails severely on OOD populations (-12.1pp on Spanish media), confirming the positivity violation observed in the ACS application. Unlike MCGrad, IPW requires re-estimating density ratios for each target population.
 
-**Comparison with the ACS application.** Across both applications, the pattern is consistent: MCGrad achieves near-zero bias when the target population's features are within the calibration support, and degrades when the shift is along an uncalibrated dimension. IPW matches MCGrad within calibration but fails harder on OOD targets. MCGrad's practical advantage is that it requires no target-specific estimation: a single calibrated device can be applied to any target population. This is the "universal adaptability" property of @kim2022universal.
+**Comparison with the ACS application.** Across both applications, the pattern is consistent: MCGrad achieves near-zero bias when the target population's features are within the calibration support, and degrades when the shift is along an uncalibrated dimension. IPW matches MCGrad within calibration but fails harder on OOD targets. MCGrad's practical advantage is that it requires no target-specific estimation: a single calibrated device can be applied to any target population. This is the "universal adaptability" property of @kim2022universal. We replicate the CAP analysis using Llama 3.3 70B Instruct (an open-weight model) in SI Appendix S2; the results are consistent, confirming that the findings are not specific to a particular LLM.
 
 # Discussion
 
