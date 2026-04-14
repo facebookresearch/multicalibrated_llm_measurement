@@ -107,7 +107,13 @@ Verbalized confidence elicitation partially addresses both problems by producing
 
 The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, diverges catastrophically on Llama's verbalized confidence scores, producing prevalence estimates biased by +33 to +60pp. This occurs because the verbalized scores are not calibrated posteriors, violating SLD's core assumption. PACC shows moderate bias (+0.6 to +5.9pp within calibration, +2.4 to +5.9pp OOD). Full results including SLD and PACC are available in the replication code.
 
-## S3. Additional Figures
+## S3. Claude Opus Score Distribution
+
+![Figure S1](images/figure_cap_score_distribution.png){width=100%}
+
+*Figure S1: Claude Opus 4.6 P(Yes) score distribution by label across six CAP sub-populations. Scores are well-separated (mean 0.75 for positives vs. 0.07 for negatives) with 43 unique values and no boundary mass.*
+
+## S4. Additional Figures
 
 [TODO: Add any supplementary figures, e.g., calibration curves, detailed bootstrap distributions.]
 
