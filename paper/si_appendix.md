@@ -60,7 +60,7 @@ where $c = \bar{Y}_{\text{cal}} / \bar{h}_{\text{cal}}$ is estimated on calibrat
 
 In the simulation, multicalibration applies stratum-specific additive corrections:
 $$h_{\text{mc}}(X) = h(X) + \hat{\epsilon}_g \quad \text{for } X \in \text{stratum } g$$
-where $\hat{\epsilon}_g = \bar{Y}_g - \bar{h}_g$ is estimated on calibration data within each stratum. In the empirical applications, multicalibration uses MCGrad [@tax2025mcgrad].
+where $\hat{\epsilon}_g = \bar{Y}_g - \bar{h}_g$ is estimated on calibration data within each stratum. In the empirical applications, multicalibration uses MCGrad [@tax2026mcgrad].
 
 ## S2. Robustness: Replication with Open-Weight LLM (Llama 3.3 70B)
 
@@ -78,7 +78,7 @@ The Llama analysis uses the full 105,000-document sample (15,000 per sub-populat
 
 ### S2.3 Results: Verbalized Confidence Scores
 
-Table S1 shows prevalence estimation bias using Llama 3.3 70B with verbalized confidence scores.
+Table S3 shows prevalence estimation bias using Llama 3.3 70B with verbalized confidence scores.
 
 | Scenario | Shift Type | True Prev. | CC | RG | IPW | Iso. | MCGrad |
 |---|---|---|---|---|---|---|---|
@@ -89,7 +89,7 @@ Table S1 shows prevalence estimation bias using Llama 3.3 70B with verbalized co
 | Spain media | OOD doc type | 19.3% | +15.4 | +6.6 | -9.8 | -7.2 | -4.9 |
 | Belgium TV | OOD doc type | 11.1% | +13.3 | -0.0 | -3.5 | -1.6 | -3.4 |
 
-*Table S1: Prevalence estimation bias (pp) for Law & Crime topic using Llama 3.3 70B with verbalized confidence scores. CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted estimation, Iso. = isotonic regression.*
+*Table S3: Prevalence estimation bias (pp) for Law & Crime topic using Llama 3.3 70B with verbalized confidence scores. CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted estimation, Iso. = isotonic regression.*
 
 The pattern is consistent with the main text's Claude Opus results: MCGrad achieves near-zero bias within the calibration distribution ($\leq 0.2$pp) and degrades on OOD populations (-3.4 to -4.9pp). Several differences are notable:
 
@@ -126,15 +126,15 @@ The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, d
 
 ### Table S2: CAP Law & Crime Prevalence Estimation Bias (Claude Opus 4.6)
 
-| Scenario | Shift Type | True Prev. | CC | RG | IPW | Iso. | MC (binary) | MC (scores) |
-|---|---|---|---|---|---|---|---|---|
-| Baseline | None | 8.1% | +1.9 | +0.5 | -0.0 | -0.3 | -0.2 | -0.2 |
-| Country shift | Within-cal. | 8.9% | +2.5 | +1.7 | -0.4 | +0.3 | -0.5 | -0.2 |
-| Doc-type shift | Within-cal. | 6.8% | +1.6 | -0.3 | -0.4 | -0.2 | -0.2 | +0.0 |
-| Spain media | OOD doc type | 19.5% | +3.6 | +3.1 | -12.1 | -2.7 | -2.5 | -4.4 |
-| Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | -4.4 | +2.4 | +0.4 | +1.6 |
+| Scenario | Shift Type | True Prev. | CC | RG | SLD | IPW | Iso. | MC (binary) | MC (scores) |
+|---|---|---|---|---|---|---|---|---|---|
+| Baseline | None | 8.1% | +1.9 | +0.5 | +6.6 | -0.0 | -0.3 | -0.2 | -0.2 |
+| Country shift | Within-cal. | 8.9% | +2.5 | +1.7 | +8.8 | -0.4 | +0.3 | -0.5 | -0.2 |
+| Doc-type shift | Within-cal. | 6.8% | +1.6 | -0.3 | +5.1 | -0.4 | -0.2 | -0.2 | +0.0 |
+| Spain media | OOD doc type | 19.5% | +3.6 | +3.1 | +21.5 | -12.1 | -2.7 | -2.5 | -4.4 |
+| Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | +13.7 | -4.4 | +2.4 | +0.4 | +1.6 |
 
-*CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
+*CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; SLD = Saerens-Latinne-Decaestecker (label shift, applied to probability scores); IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
 
 ## S4. Simulation: RMSE
 
