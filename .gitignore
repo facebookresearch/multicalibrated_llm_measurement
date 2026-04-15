@@ -60,3 +60,4 @@ env/
 # LLM related
 .claude/
 CLAUDE.md
+cap_analysis_data_backup/
