@@ -133,7 +133,7 @@ def sld_estimate(scores, src_prev):
 
 SRC_PREV = cal_df['law_crime'].mean()
 
-methods = ['Classify &\nCount', 'Rogan-\nGladen', 'SLD', 'IPW', 'Isotonic\nRegression', 'MCGrad\n(binary)', 'MCGrad\n(scores)']
+methods = ['Classify &\nCount', 'Rogan-\nGladen', 'IPW', 'Isotonic\nRegression', 'MCGrad\n(binary)', 'MCGrad\n(scores)']
 
 within_cal_scenarios = [
     ('Baseline', lambda rs: test_df.sample(n=min(N, len(test_df)), replace=True, random_state=rs), 'o'),

@@ -144,7 +144,7 @@ def sld_estimate(scores, sp):
         p = pn
     return p
 
-methods = ['Classify &\nCount', 'Rogan-\nGladen', 'SLD', 'IPW', 'Isotonic\nRegression', 'MCGrad']
+methods = ['Classify &\nCount', 'Rogan-\nGladen', 'IPW', 'Isotonic\nRegression', 'MCGrad']
 
 def compute_bias(target, method_name):
     tp = target[LABEL_COLUMN].mean()
