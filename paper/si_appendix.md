@@ -58,9 +58,11 @@ where $c = \bar{Y}_{\text{cal}} / \bar{h}_{\text{cal}}$ is estimated on calibrat
 
 ### S1.7 Multicalibration
 
-In the simulation, multicalibration applies stratum-specific additive corrections:
+In the simulation, which has a single binary covariate, multicalibration reduces to stratum-specific additive corrections:
 $$h_{\text{mc}}(X) = h(X) + \hat{\epsilon}_g \quad \text{for } X \in \text{stratum } g$$
-where $\hat{\epsilon}_g = \bar{Y}_g - \bar{h}_g$ is estimated on calibration data within each stratum. In the empirical applications, multicalibration uses MCGrad [@tax2026mcgrad].
+where $\hat{\epsilon}_g = \bar{Y}_g - \bar{h}_g$ is estimated on calibration data within each stratum.
+
+In the empirical applications, we use MCGrad [@tax2026mcgrad], a multicalibration algorithm based on gradient boosting. MCGrad operates in logit space: given a base predictor $f_0(X)$ with logit $F_0(X) = \text{logit}(f_0(X))$, it iteratively fits gradient boosted decision trees (GBDTs) on the residuals between labels and current predictions. At each round $t$, a GBDT $g_t$ is trained with the current logit predictions as `init_score` and with the feature matrix consisting of the segment features (categorical and numerical) augmented by the current logit prediction as an additional input feature. The logit predictor is then updated as $F_{t+1}(X) = \alpha_t \cdot (F_t(X) + g_t(X))$, where $\alpha_t$ is an unshrinkage factor estimated by logistic regression to counteract the GBDT's learning rate. By including the prediction as a feature, GBDT splits naturally discover miscalibrated regions in the joint space of features and score levels, thereby approximating multicalibration without requiring explicit group specification. Early stopping on a validation set prevents overfitting. MCGrad uses LightGBM as the GBDT implementation. See @tax2026mcgrad for convergence results and deployment details.
 
 ## S2. Robustness: Replication with Open-Weight LLM (Llama 3.3 70B)
 
