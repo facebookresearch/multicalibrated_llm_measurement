@@ -4,8 +4,9 @@ data/
 *.parquet
 *.zip
 
-# Exception: LLM inference scores (expensive to recompute)
-!cap_analysis/data/inference_output/**/*.csv
+# Exception: merged inference results and sample files (expensive to recompute)
+!cap_analysis/data/inference_output/**/merged.csv
+!cap_analysis/data/opus_30k_sample.csv
 
 # macOS
 .DS_Store

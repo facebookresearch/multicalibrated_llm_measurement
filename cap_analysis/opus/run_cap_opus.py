@@ -53,13 +53,11 @@ sample['party'] = sample['party'].fillna('unknown')
 sample['text_len'] = sample['text'].str.len()
 
 # Binary campaign (has ~100 duplicate IDs)
-binary_files = sorted(glob.glob('data/inference_output/claude-opus-30k-binary/shard_*.csv'))
-binary = pd.concat([pd.read_csv(f) for f in binary_files]).drop_duplicates(subset='id', keep='first')
+binary = pd.read_csv('data/inference_output/claude-opus-30k-binary/merged.csv').drop_duplicates(subset='id', keep='first')
 binary['llm_yes'] = (binary['answer'].str.lower() == 'yes').astype(int)
 
 # P(Y/N) campaign
-pyn_files = sorted(glob.glob('data/inference_output/claude-opus-30k-pyn/shard_*.csv'))
-pyn = pd.concat([pd.read_csv(f) for f in pyn_files])
+pyn = pd.read_csv('data/inference_output/claude-opus-30k-pyn/merged.csv')
 
 # Merge
 data = sample.merge(binary[['id', 'llm_yes']], on='id', how='left')
