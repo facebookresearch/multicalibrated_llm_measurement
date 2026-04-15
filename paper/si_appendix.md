@@ -136,19 +136,25 @@ The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, d
 
 *CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
 
-## S4. Simulation: All Methods
+## S4. Simulation: RMSE
+
+![](images/figure_sim_rmse.png){width=100%}
+
+*Figure S2: Root mean squared error (RMSE) under covariate shift for the same four methods shown in Figure 1, averaged over 50 simulation runs. RMSE closely tracks absolute bias for all methods, confirming that variance is small relative to bias at this sample size. MCGrad maintains the lowest RMSE across all shift levels.*
+
+## S5. Simulation: All Methods
 
 ![](images/figure_sim_lineplot_all.png){width=100%}
 
-*Figure S2: Simulation bias curves for all seven methods. Rogan-Gladen and PACC exhibit catastrophic failure (bias exceeding -200% at extreme shifts). SLD shows large bias under covariate shift because it assumes label shift. The uncalibrated baseline shows moderate bias. MCGrad maintains near-zero bias throughout.*
+*Figure S3: Simulation bias curves for all seven methods. Rogan-Gladen and PACC exhibit catastrophic failure (bias exceeding -200% at extreme shifts). SLD shows large bias under covariate shift because it assumes label shift. The uncalibrated baseline shows moderate bias. MCGrad maintains near-zero bias throughout.*
 
-## S5. Claude Opus Score Distribution
+## S6. Claude Opus Score Distribution
 
-![Figure S1](images/figure_cap_score_distribution.png){width=100%}
+![](images/figure_cap_score_distribution.png){width=100%}
 
-*Figure S1: Claude Opus 4.6 P(Yes) score distribution by label across six CAP sub-populations. Scores are well-separated (mean 0.75 for positives vs. 0.07 for negatives) with 43 unique values and no boundary mass.*
+*Figure S4: Claude Opus 4.6 P(Yes) score distribution by label across six CAP sub-populations. Scores are well-separated (mean 0.75 for positives vs. 0.07 for negatives) with 43 unique values and no boundary mass.*
 
-## S4. Additional Figures
+## S7. Additional Figures
 
 [TODO: Add any supplementary figures, e.g., calibration curves, detailed bootstrap distributions.]
 

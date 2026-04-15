@@ -165,4 +165,40 @@ fig3.tight_layout()
 fig3.savefig(os.path.join(IMG_DIR, 'figure_sim_lineplot_all.png'), dpi=300, bbox_inches='tight')
 print("  Saved figure_sim_lineplot_all.png")
 
+# ============================================================
+# RMSE figure (same 4 methods, same style as main bias figure)
+# ============================================================
+print("Generating RMSE figure...")
+
+methods_rmse = [
+    ('Classify & Count', np.sqrt(results['mse_cc']), '#e41a1c', '-'),
+    ('Rogan-Gladen', np.sqrt(results['mse_rg']), '#377eb8', '-'),
+    ('Isotonic Regression', np.sqrt(results['mse_calibrated']), '#ff7f00', '-'),
+    ('MCGrad', np.sqrt(results['mse_multicalibrated']), '#4daf4a', '-'),
+]
+
+fig4, ax4 = plt.subplots(figsize=(7, 3.5))
+
+for name, rmse_curve, color, ls in methods_rmse:
+    clipped = np.clip(rmse_curve, 0, 40)
+    ax4.plot(deltas, clipped, color=color, linestyle=ls, linewidth=1.8,
+             label=name, zorder=3)
+
+    if np.any(rmse_curve > 40):
+        idx = np.where(rmse_curve > 40)[0][0]
+        ax4.annotate('', xy=(deltas[idx], 40), xytext=(deltas[idx], 36),
+                     arrowprops=dict(arrowstyle='->', color=color, lw=1.5))
+
+ax4.axhline(y=0, color='#cccccc', linewidth=0.8, zorder=1)
+ax4.axvline(x=0, color='#eeeeee', linewidth=0.5, zorder=0)
+ax4.set_xlabel('Distribution shift: $\\Delta P(X\\!=\\!0)$')
+ax4.set_ylabel('RMSE (percentage points)')
+ax4.set_ylim(0, 42)
+
+ax4.legend(fontsize=8, loc='upper left')
+
+fig4.tight_layout()
+fig4.savefig(os.path.join(IMG_DIR, 'figure_sim_rmse.png'), dpi=300, bbox_inches='tight')
+print("  Saved figure_sim_rmse.png")
+
 print("Done.")
