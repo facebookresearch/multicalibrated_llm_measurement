@@ -22,6 +22,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+np.random.seed(42)
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from mcgrad import methods as mcgrad_methods
@@ -304,8 +306,8 @@ ax2.legend(fontsize=7, loc='upper left', title='Scenario', title_fontsize=7,
            framealpha=0.95)
 
 fig.tight_layout()
-fig.savefig('../paper/images/figure_cap_shift_gradient.png', dpi=300, bbox_inches='tight')
-print("  Saved figure_cap_shift_gradient.png")
+fig.savefig('../paper/images/figure_cap_v5.png', dpi=300, bbox_inches='tight')
+print("  Saved figure_cap_v5.png")
 
 # ============================================================
 # 7. SI Figure S4: Score distribution by label and sub-population
