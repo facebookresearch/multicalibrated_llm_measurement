@@ -156,8 +156,4 @@ The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, d
 
 *Figure S4: Claude Opus 4.6 P(Yes) score distribution by label across six CAP sub-populations. Scores are well-separated (mean 0.75 for positives vs. 0.07 for negatives) with 43 unique values and no boundary mass.*
 
-## S7. Additional Figures
-
-[TODO: Add any supplementary figures, e.g., calibration curves, detailed bootstrap distributions.]
-
 # References
