@@ -1,5 +1,5 @@
 ---
-title: "Multicalibration for Unbiased Model-Based Prevalence Estimation"
+title: "Unbiased Prevalence Estimation with Multicalibrated LLMs"
 author:
   - Thomas Leeper^1^
   - Fridolin Linder^1^
