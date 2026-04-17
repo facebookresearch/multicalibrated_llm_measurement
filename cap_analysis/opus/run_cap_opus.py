@@ -6,15 +6,16 @@ inference results on 30K documents. Generates Figure 3 (bias dot plot) and
 SI Figure S4 (score distribution), plus a console results summary.
 
 Usage:
-    cd cap_analysis && conda run -n mcgrad_tutorials python3 run_cap_opus.py
+    conda run -n mcgrad_tutorials python3 cap_analysis/opus/run_cap_opus.py
 """
-import glob
 import logging
 import os
-import sys
 import warnings
 
-warnings.filterwarnings('ignore')
+# Silence FutureWarnings from sklearn/pandas/mcgrad — they don't affect numerical
+# correctness here. SettingWithCopyWarning is avoided below by .copy()-ing splits.
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 logging.getLogger('mcgrad').setLevel(logging.WARNING)
 
 import matplotlib
@@ -28,10 +29,11 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from mcgrad import methods as mcgrad_methods
 
-sys.path.insert(0, '..')
-from plot_config import METHOD_COLORS
-
-os.makedirs('../paper/images', exist_ok=True)
+# Resolve paths relative to this file so the script runs from any cwd.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(SCRIPT_DIR, '..', 'data')
+IMG_DIR = os.path.join(SCRIPT_DIR, '..', '..', 'paper', 'images')
+os.makedirs(IMG_DIR, exist_ok=True)
 
 plt.rcParams.update({
     'font.size': 10,
@@ -48,16 +50,20 @@ plt.rcParams.update({
 # 1. Load data
 # ============================================================
 print("Loading data...")
-sample = pd.read_csv('data/opus_30k_sample.csv')
+sample = pd.read_csv(os.path.join(DATA_DIR, 'opus_30k_sample.csv'))
 sample['party'] = sample['party'].fillna('unknown')
 sample['text_len'] = sample['text'].str.len()
 
 # Binary campaign (has ~100 duplicate IDs)
-binary = pd.read_csv('data/inference_output/claude-opus-30k-binary/merged.csv').drop_duplicates(subset='id', keep='first')
+binary = pd.read_csv(
+    os.path.join(DATA_DIR, 'inference_output/claude-opus-30k-binary/merged.csv')
+).drop_duplicates(subset='id', keep='first')
 binary['llm_yes'] = (binary['answer'].str.lower() == 'yes').astype(int)
 
 # P(Y/N) campaign
-pyn = pd.read_csv('data/inference_output/claude-opus-30k-pyn/merged.csv')
+pyn = pd.read_csv(
+    os.path.join(DATA_DIR, 'inference_output/claude-opus-30k-pyn/merged.csv')
+)
 
 # Merge
 data = sample.merge(binary[['id', 'llm_yes']], on='id', how='left')
@@ -87,8 +93,8 @@ for key in CAL_SUBPOPS:
     cal_parts.append(cal)
     test_parts.append(test)
 
-cal_df = pd.concat(cal_parts, ignore_index=True)
-test_df = pd.concat(test_parts, ignore_index=True)
+cal_df = pd.concat(cal_parts, ignore_index=True).copy()
+test_df = pd.concat(test_parts, ignore_index=True).copy()
 ood_spain = data[data['subpop'] == 'Spain_media'].copy()
 ood_belgium = data[data['subpop'] == 'Belgium_tv_news'].copy()
 
@@ -304,8 +310,8 @@ ax2.legend(fontsize=7, loc='upper left', title='Scenario', title_fontsize=7,
            framealpha=0.95)
 
 fig.tight_layout()
-fig.savefig('../paper/images/figure_cap_v5.png', dpi=300, bbox_inches='tight')
-print("  Saved figure_cap_v5.png")
+fig.savefig(os.path.join(IMG_DIR, 'figure_cap_v5.png'), dpi=300, bbox_inches='tight')
+print(f"  Saved {os.path.join(IMG_DIR, 'figure_cap_v5.png')}")
 
 # ============================================================
 # 7. SI Figure S4: Score distribution by label and sub-population
@@ -344,8 +350,11 @@ for ax, key, title in zip(axes.flat, subpop_order, subpop_titles):
 
 fig.suptitle('Claude Opus 4.6: P(Yes) Score Distribution by Label and Sub-population', fontsize=13)
 fig.tight_layout()
-fig.savefig('../paper/images/figure_cap_score_distribution.png', dpi=300, bbox_inches='tight')
-print("  Saved figure_cap_score_distribution.png")
+fig.savefig(
+    os.path.join(IMG_DIR, 'figure_cap_score_distribution.png'),
+    dpi=300, bbox_inches='tight',
+)
+print(f"  Saved {os.path.join(IMG_DIR, 'figure_cap_score_distribution.png')}")
 
 # ============================================================
 # 8. Results summary table

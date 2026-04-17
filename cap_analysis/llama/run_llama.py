@@ -6,18 +6,20 @@ Llama 3.3 70B Instruct verbalized confidence scores (2-stage with nudge).
 Generates SI Appendix Table S3.
 
 Usage:
-    cd cap_analysis && conda run -n mcgrad_tutorials python3 llama/run_llama.py
+    conda run -n mcgrad_tutorials python3 cap_analysis/llama/run_llama.py
 
 Requires:
-    - data/full_sample.csv (105K documents)
-    - data/inference_output/llama-70b-verbalized-2stage/full_codebook.csv
+    - cap_analysis/data/full_sample.csv (105K documents)
+    - cap_analysis/data/inference_output/llama-70b-verbalized-2stage/full_codebook.csv
 """
 import logging
 import os
-import sys
 import warnings
 
-warnings.filterwarnings('ignore')
+# Silence FutureWarnings from sklearn/pandas/mcgrad — they don't affect numerical
+# correctness here.
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 logging.getLogger('mcgrad').setLevel(logging.WARNING)
 
 import numpy as np
@@ -27,18 +29,13 @@ from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.model_selection import train_test_split
 from mcgrad import methods as mcgrad_methods
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+np.random.seed(42)
 
-# ============================================================
-# 1. Load data
-# ============================================================
-print("Loading data...")
-data_df = pd.read_csv('data/full_sample.csv')
-scores_df = pd.read_csv('data/inference_output/llama-70b-verbalized-2stage/full_codebook.csv')
-data_df['llm_score'] = scores_df['score'].astype(float)
+# Resolve paths relative to this file so the script runs from any cwd.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(SCRIPT_DIR, '..', 'data')
 
 LABEL = 'law_crime'
-
 SUBPOP_MAP = {
     ('Denmark', 'parliamentary_question'): 'denmark_questions',
     ('Spain', 'parliamentary_question'): 'spain_questions',
@@ -47,9 +44,24 @@ SUBPOP_MAP = {
     ('Belgium', 'tv_news'): 'belgium_tv',
     ('Belgium', 'newspaper'): 'belgium_newspaper',
 }
-data_df['subpop'] = data_df.apply(
-    lambda r: SUBPOP_MAP.get((r['country'], r['doc_type']), 'unknown'), axis=1
-)
+CAL_SUBPOPS = ['denmark_questions', 'spain_questions', 'us_bills', 'belgium_newspaper']
+CAT_FEATS = ['doc_type', 'country', 'party']
+NUM_FEATS = ['decade']
+IPW_FEATS = ['country', 'doc_type', 'decade']
+N_TARGET = 20_000
+
+# ============================================================
+# 1. Load data
+# ============================================================
+print("Loading data...")
+data_df = pd.read_csv(os.path.join(DATA_DIR, 'full_sample.csv'))
+scores_df = pd.read_csv(os.path.join(
+    DATA_DIR, 'inference_output/llama-70b-verbalized-2stage/full_codebook.csv'
+))
+data_df['llm_score'] = scores_df['score'].astype(float)
+
+subpop_keys = pd.Series(list(zip(data_df['country'], data_df['doc_type'])))
+data_df['subpop'] = subpop_keys.map(SUBPOP_MAP).fillna('unknown').values
 data_df['decade'] = (data_df['year'] // 10) * 10
 data_df['party'] = data_df['party'].fillna('unknown')
 
@@ -68,18 +80,19 @@ for key, df in subpops.items():
     print(f"  {key:<25} AUC={auc:.3f}  N={len(df):,}  prev={df[LABEL].mean():.1%}")
 
 # ============================================================
-# 3. Calibration split
+# 3. Calibration / test split
 # ============================================================
-CAL_SUBPOPS = ['denmark_questions', 'spain_questions', 'us_bills', 'belgium_newspaper']
 cal_parts, test_parts = [], []
 for key in CAL_SUBPOPS:
     sub = subpops[key]
     cal_frac = min(10_000 / len(sub), 0.67)
-    cal, test = train_test_split(sub, test_size=1-cal_frac, random_state=42, stratify=sub[LABEL])
+    cal, test = train_test_split(
+        sub, test_size=1 - cal_frac, random_state=42, stratify=sub[LABEL],
+    )
     cal_parts.append(cal)
     test_parts.append(test)
-cal_df = pd.concat(cal_parts, ignore_index=True)
-test_df = pd.concat(test_parts, ignore_index=True)
+cal_df = pd.concat(cal_parts, ignore_index=True).copy()
+test_df = pd.concat(test_parts, ignore_index=True).copy()
 
 print(f"\nCalibration: {len(cal_df):,}, Test: {len(test_df):,}")
 print(f"Cal prevalence: {cal_df[LABEL].mean():.3f}")
@@ -88,92 +101,127 @@ print(f"Cal prevalence: {cal_df[LABEL].mean():.3f}")
 # 4. Fit calibration methods
 # ============================================================
 print("\nFitting models...")
-CAT_FEATS = ['doc_type', 'country', 'party']
-NUM_FEATS = ['decade']
-
 isotonic = mcgrad_methods.IsotonicRegression().fit(cal_df, 'llm_score', LABEL)
 mcgrad = mcgrad_methods.MCGrad(save_training_performance=True)
-mcgrad = mcgrad.fit(cal_df, 'llm_score', LABEL,
+mcgrad = mcgrad.fit(
+    cal_df, 'llm_score', LABEL,
     categorical_feature_column_names=CAT_FEATS,
-    numerical_feature_column_names=NUM_FEATS)
+    numerical_feature_column_names=NUM_FEATS,
+)
 
 ood_spain = subpops['spain_media']
 ood_belgium = subpops['belgium_tv']
 
 for df in [test_df, ood_spain, ood_belgium]:
     df['iso_pred'] = isotonic.predict(df, 'llm_score')
-    df['mc_pred'] = mcgrad.predict(df, 'llm_score',
+    df['mc_pred'] = mcgrad.predict(
+        df, 'llm_score',
         categorical_feature_column_names=CAT_FEATS,
-        numerical_feature_column_names=NUM_FEATS)
+        numerical_feature_column_names=NUM_FEATS,
+    )
 
 # ============================================================
 # 5. Calibration parameters for CC, RG, SLD, IPW
 # ============================================================
 fpr_arr, tpr_arr, thresholds = roc_curve(cal_df[LABEL], cal_df['llm_score'])
 THRESHOLD = float(thresholds[np.argmax(tpr_arr - fpr_arr)])
-bc = (cal_df['llm_score'] >= THRESHOLD).astype(int)
-cl = cal_df[LABEL].astype(int)
-cal_tpr = ((bc == 1) & (cl == 1)).sum() / cl.sum()
-cal_fpr = ((bc == 1) & (cl == 0)).sum() / (1 - cl).sum()
+binary_cal = (cal_df['llm_score'] >= THRESHOLD).astype(int)
+labels_cal = cal_df[LABEL].astype(int)
+n_pos = (labels_cal == 1).sum()
+n_neg = (labels_cal == 0).sum()
+cal_tpr = ((binary_cal == 1) & (labels_cal == 1)).sum() / n_pos
+cal_fpr = ((binary_cal == 1) & (labels_cal == 0)).sum() / n_neg
 src_prev = cal_df[LABEL].mean()
 
-def sld_estimate(scores, sp=src_prev):
-    p = sp
-    for _ in range(100):
-        rp = p / sp; rn = (1 - p) / (1 - sp)
-        adj = (rp * scores) / (rp * scores + rn * (1 - scores))
-        pn = adj.mean()
-        if abs(pn - p) < 1e-6: break
-        p = pn
-    return p
 
-IPW_FEATS = ['country', 'doc_type', 'decade']
+def sld_estimate(scores, source_prevalence, max_iter=100, tol=1e-6):
+    """Saerens-Latinne-Decaestecker (EMQ) prevalence estimator."""
+    p_hat = source_prevalence
+    for _ in range(max_iter):
+        ratio_pos = p_hat / source_prevalence
+        ratio_neg = (1 - p_hat) / (1 - source_prevalence)
+        adjusted = (ratio_pos * scores) / (
+            ratio_pos * scores + ratio_neg * (1 - scores)
+        )
+        p_new = adjusted.mean()
+        if abs(p_new - p_hat) < tol:
+            break
+        p_hat = p_new
+    return p_hat
+
+
 def ipw_estimate(cal, target):
-    combined = pd.concat([cal[IPW_FEATS].assign(_t=0), target[IPW_FEATS].assign(_t=1)], ignore_index=True)
+    """Inverse-probability-weighted prevalence estimate."""
+    combined = pd.concat([
+        cal[IPW_FEATS].assign(_t=0),
+        target[IPW_FEATS].assign(_t=1),
+    ], ignore_index=True)
     X = pd.get_dummies(combined[IPW_FEATS], drop_first=True).values.astype(float)
     z = combined['_t'].values
     clf = LogisticRegression(max_iter=1000, random_state=42)
     clf.fit(X, z)
     n = len(cal)
     p = clf.predict_proba(X[:n])[:, 1]
-    w = p / np.maximum(1 - p, 1e-10)
-    return np.clip(np.average(cal[LABEL].values, weights=w), 0, 1)
+    weights = p / np.maximum(1 - p, 1e-10)
+    return np.clip(np.average(cal[LABEL].values, weights=weights), 0, 1)
+
 
 # ============================================================
 # 6. Compute prevalence bias across scenarios
 # ============================================================
-N = 20_000
+def resample_country(df, random_state=42):
+    weights = np.where(df['country'] == 'Belgium', 5.0, 1.0)
+    weights = weights / weights.sum()
+    return df.sample(
+        n=min(N_TARGET, len(df)), weights=weights, replace=True,
+        random_state=random_state,
+    )
 
-def rs_country(df, rs=42):
-    w = np.where(df['country'] == 'Belgium', 5.0, 1.0); w /= w.sum()
-    return df.sample(n=min(N, len(df)), weights=w, replace=True, random_state=rs)
-def rs_doctype(df, rs=42):
-    w = np.where(df['doc_type'] == 'bill', 5.0, 1.0); w /= w.sum()
-    return df.sample(n=min(N, len(df)), weights=w, replace=True, random_state=rs)
+
+def resample_doctype(df, random_state=42):
+    weights = np.where(df['doc_type'] == 'bill', 5.0, 1.0)
+    weights = weights / weights.sum()
+    return df.sample(
+        n=min(N_TARGET, len(df)), weights=weights, replace=True,
+        random_state=random_state,
+    )
+
 
 scenarios = {
-    'Baseline':       test_df.sample(n=min(N, len(test_df)), replace=True, random_state=42),
-    'Country shift':  rs_country(test_df),
-    'Doc-type shift': rs_doctype(test_df),
-    'Spain media':    ood_spain.sample(n=min(N, len(ood_spain)), replace=True, random_state=42),
-    'Belgium TV':     ood_belgium.sample(n=min(N, len(ood_belgium)), replace=True, random_state=42),
+    'Baseline':       test_df.sample(n=min(N_TARGET, len(test_df)), replace=True, random_state=42),
+    'Country shift':  resample_country(test_df),
+    'Doc-type shift': resample_doctype(test_df),
+    'Spain media':    ood_spain.sample(n=min(N_TARGET, len(ood_spain)), replace=True, random_state=42),
+    'Belgium TV':     ood_belgium.sample(n=min(N_TARGET, len(ood_belgium)), replace=True, random_state=42),
 }
 
-print(f"\n{'Scenario':<18} {'True':>6}  {'CC':>7} {'RG':>7} {'SLD':>7} {'IPW':>7} {'Iso':>7} {'MCGrad':>7}")
+print(
+    f"\n{'Scenario':<18} {'True':>6}  "
+    f"{'CC':>7} {'RG':>7} {'SLD':>7} {'IPW':>7} {'Iso':>7} {'MCGrad':>7}"
+)
 print("-" * 75)
 
-for name, t in scenarios.items():
-    tp = t[LABEL].mean()
-    cc = (t['llm_score'] >= THRESHOLD).mean()
-    d = cal_tpr - cal_fpr
-    rg = np.clip((cc - cal_fpr) / d, 0, 1) if abs(d) > 1e-10 else cc
-    sld = sld_estimate(t['llm_score'].values)
-    ipw = ipw_estimate(cal_df, t)
-    iso = t['iso_pred'].mean()
-    mc = t['mc_pred'].mean()
+for name, target in scenarios.items():
+    true_prev = target[LABEL].mean()
+    cc = (target['llm_score'] >= THRESHOLD).mean()
+    denom = cal_tpr - cal_fpr
+    if abs(denom) > 1e-10:
+        rg = float(np.clip((cc - cal_fpr) / denom, 0, 1))
+    else:
+        rg = float(cc)
+    sld = sld_estimate(target['llm_score'].values, src_prev)
+    ipw = ipw_estimate(cal_df, target)
+    iso = target['iso_pred'].mean()
+    mc = target['mc_pred'].mean()
 
-    def fb(e): return f"{(e-tp)*100:+.1f}"
-    print(f"{name:<18} {tp:>5.1%}  {fb(cc):>7} {fb(rg):>7} {fb(sld):>7} {fb(ipw):>7} {fb(iso):>7} {fb(mc):>7}")
+    def fmt_bias(estimate):
+        return f"{(estimate - true_prev) * 100:+.1f}"
+
+    print(
+        f"{name:<18} {true_prev:>5.1%}  "
+        f"{fmt_bias(cc):>7} {fmt_bias(rg):>7} {fmt_bias(sld):>7} "
+        f"{fmt_bias(ipw):>7} {fmt_bias(iso):>7} {fmt_bias(mc):>7}"
+    )
 
 print("\nCC = Classify & Count, RG = Rogan-Gladen, SLD = Saerens-Latinne-Decaestecker")
 print("IPW = Importance-weighted, Iso = Isotonic regression")

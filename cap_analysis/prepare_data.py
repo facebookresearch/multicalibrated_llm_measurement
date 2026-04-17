@@ -246,8 +246,6 @@ def _assign_unique_ids(df):
 
 def create_samples(output_dir, datasets):
     """Create feasibility and full inference samples."""
-    import numpy as np
-
     # Feasibility sample: 1K per sub-population (7K total)
     print("\nCreating feasibility sample (1K per sub-pop)...")
     feasibility_frames = []
@@ -296,7 +294,7 @@ def main():
         "--proxy",
         type=str,
         default=None,
-        help="HTTP proxy URL (e.g., http://fwdproxy:8080 for Meta devservers)",
+        help="HTTP proxy URL (e.g., http://proxy.example.com:8080)",
     )
     args = parser.parse_args()
 

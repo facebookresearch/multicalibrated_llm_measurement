@@ -37,11 +37,10 @@ distribution.
 │   │       └── README.md                 # Inference documentation
 │   ├── llama/
 │   │   ├── run_llama.py         # Reproduction script (SI Appendix S2)
-│   │   └── inference/           # Llama inference scripts
+│   │   └── inference/
+│   │       └── llm_inference.py # Llama 3.3 70B 2-stage verbalized confidence
 │   ├── data/                    # Data files (see Data section below)
-│   ├── helpers.py               # Shared helper functions
 │   └── prepare_data.py          # Download & standardize CAP datasets
-├── plot_config.py               # Shared matplotlib style config
 └── requirements.txt             # Python dependencies
 ```
 
@@ -76,7 +75,7 @@ conda run -n mcgrad_tutorials python3 acs_analysis/run_acs.py
 Inference data is included in the repository. To reproduce the analysis:
 
 ```bash
-cd cap_analysis && conda run -n mcgrad_tutorials python3 opus/run_cap_opus.py
+conda run -n mcgrad_tutorials python3 cap_analysis/opus/run_cap_opus.py
 ```
 
 To reproduce the LLM inference itself, see `cap_analysis/opus/inference/README.md`.
@@ -84,10 +83,11 @@ To reproduce the LLM inference itself, see `cap_analysis/opus/inference/README.m
 ### 4. CAP Application — Llama Replication (SI Appendix S2)
 
 The Llama replication requires running inference on a GPU (A100 80GB recommended).
-See `cap_analysis/llama/inference/` for inference scripts. To run the analysis:
+The inference script is `cap_analysis/llama/inference/llm_inference.py`. To run the
+downstream analysis on the included scores:
 
 ```bash
-cd cap_analysis && conda run -n mcgrad_tutorials python3 llama/run_llama.py
+conda run -n mcgrad_tutorials python3 cap_analysis/llama/run_llama.py
 ```
 
 All scripts save figures to `paper/images/`.

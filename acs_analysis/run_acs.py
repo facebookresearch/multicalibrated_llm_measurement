@@ -12,7 +12,10 @@ import logging
 import os
 import sys
 
-warnings.filterwarnings('ignore')
+# Silence FutureWarnings from sklearn/pandas/mcgrad — they don't affect numerical
+# correctness here. SettingWithCopyWarning is avoided below by .copy()-ing splits.
+warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 logging.getLogger('mcgrad').setLevel(logging.WARNING)
 
 import numpy as np
@@ -86,6 +89,11 @@ model_train_df, calibration_df = train_test_split(
     train_df, test_size=0.30, random_state=42,
     stratify=train_df[[LABEL_COLUMN, "STATE"]].apply(tuple, axis=1),
 )
+# Detach from parent frames so column assignments below don't trigger
+# SettingWithCopyWarning and so writes are guaranteed to land in the splits.
+test_df = test_df.copy()
+calibration_df = calibration_df.copy()
+ood_df = ood_df.copy()
 
 # ============================================================
 # Train logistic regression
@@ -173,7 +181,10 @@ def compute_bias(target, method_name):
         return ((target[BASE_MODEL_COL] >= THRESHOLD).mean() - tp) * 100
     elif method_name.startswith('Rogan'):
         ap = (target[BASE_MODEL_COL] >= THRESHOLD).mean()
-        return (np.clip((ap - cal_fpr) / d, 0, 1) - tp) * 100 if abs(d) > 1e-10 else 0
+        if abs(d) > 1e-10:
+            return (np.clip((ap - cal_fpr) / d, 0, 1) - tp) * 100
+        # Degenerate case (TPR == FPR): RG is undefined, fall back to CC.
+        return (ap - tp) * 100
     elif method_name == 'IPW':
         return (ipw_estimate(calibration_df, target) - tp) * 100
     elif method_name.startswith('Isotonic'):
