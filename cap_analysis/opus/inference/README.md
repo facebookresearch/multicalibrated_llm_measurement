@@ -29,6 +29,14 @@ The two campaigns were run independently to avoid anchoring contamination.
 
 > Law and Crime includes: general law, crime, and family issues; law enforcement agencies including border, customs, and specialized enforcement agencies; white collar crime, organized crime, counterfeiting, fraud, cyber-crime, and money laundering; illegal drug crime and enforcement, criminal penalties for drug crimes, and international efforts to combat drug trafficking; court administration, bail, pre-release, fines, and legal representation; prisons, jails, and parole systems; juvenile crime and justice; child abuse, child pornography, sexual exploitation of children, and parental kidnapping; family issues, domestic violence, child welfare, and family law; domestic criminal and civil codes; crime control, prevention, and impact of crime; and police and domestic security responses to terrorism.
 
+## Prompts
+
+**Campaign 1 (Binary):** "Does it primarily fall under the policy topic 'Law and Crime'...? Answer Yes or No."
+
+**Campaign 2 (P(Y/N)):** "Without first deciding Yes or No, directly estimate the probability that this text is about Law and Crime. Provide P(Yes) and P(No) as your true belief probabilities, summing to 1.0."
+
+The key design choice is that Campaign 2 asks for probabilities *without first committing to an answer*, to avoid the anchoring effect where a Yes/No decision biases the subsequent probability toward 0 or 1. See `claude_opus_inference.py` for the full prompt templates.
+
 ## Reproduction
 
-The inference script `claude_opus_inference.py` contains the prompting logic used to run both campaigns. To reproduce, you need access to Claude Opus 4.6 via the Anthropic API or Claude Code. The inference results are stored in the data directory (gitignored) and can be obtained from the authors upon request.
+The inference script `claude_opus_inference.py` contains the prompting logic and shard management utilities used for both campaigns. To reproduce, you need access to Claude Opus 4.6 via Claude Code sub-agents. The inference results (merged CSVs) are included in the repository. Raw shard files can be obtained from the authors upon request.
