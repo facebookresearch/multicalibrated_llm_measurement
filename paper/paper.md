@@ -138,11 +138,11 @@ These results connect two literatures that have developed in isolation. The quan
 
 **Empirical application (CAP).** We use data from the Comparative Agendas Project [@baumgartner2006cap], which provides expert-coded policy topic labels for political texts across countries. The binary outcome is whether a document addresses Law & Crime (CAP major topic code 12). We sample 30,000 documents (5,000 from each of six sub-populations: Danish parliamentary questions, Spanish oral questions, U.S. congressional bills, Belgian newspaper articles, Spanish media articles, and Belgian TV news). The measurement device is Claude Opus 4.6. Each document is classified in two independent campaigns: (1) binary Yes/No classification using the CAP codebook definition of Law & Crime, and (2) direct probability elicitation, where the LLM estimates $P(\text{Yes})$ and $P(\text{No})$ without first committing to an answer. The two campaigns were run independently to avoid anchoring contamination. The calibration set ($n \approx 13{,}400$) draws equally from four sub-populations (Denmark questions, Spain questions, U.S. bills, and Belgium newspaper). MCGrad is calibrated with categorical features (country, document type, political party) and two numerical features (decade and document length). For the binary-label condition, the LLM's Yes/No classification is passed to MCGrad as a categorical input feature, with initial scores set to the calibration-set base rate; MCGrad learns feature-conditional prevalence estimates from the metadata and LLM label alone. For the probability-score condition, MCGrad receives $P(\text{Yes})$ as the input score. Classify & Count reports the fraction of positive LLM classifications. Rogan-Gladen adjustment corrects this fraction using binary-label TPR and FPR estimated on the calibration set. Isotonic regression is fitted on probability scores using the same calibration set. IPW estimates density ratios via logistic regression on country, document type, decade, and document length. SLD results are reported in SI Appendix Table S2. Two sub-populations are held out as out-of-distribution targets: Spanish media and Belgian TV news, which differ from the calibration data only in document type while sharing the same countries and languages.
 
-**Software.** MCGrad is available at github.com/facebookincubator/MCGrad. Simulation and analysis code are available at [TODO: insert repository URL before submission].
+**Software.** MCGrad is available at <https://github.com/facebookincubator/MCGrad>. Simulation and analysis code are available at <https://github.com/facebookresearch/multicalibrated_llm_measurement>.
 
 ## Author Contributions
 
-[TODO: Add author contributions, e.g., "A.B. designed research; C.D. performed research; E.F. contributed analytic tools; A.B. and C.D. analyzed data; and A.B. wrote the paper."]
+*To be added prior to submission.*
 
 ## Competing Interests
 
@@ -150,7 +150,7 @@ The authors declare no competing interests.
 
 ## Data Availability
 
-The American Community Survey data are publicly available via the *folktables* package. The Comparative Agendas Project data are publicly available at <https://www.comparativeagendas.net>. Simulation and analysis code are available at [TODO: insert repository URL].
+The American Community Survey data are publicly available via the *folktables* package. The Comparative Agendas Project data are publicly available at <https://www.comparativeagendas.net>. Simulation and analysis code are available at <https://github.com/facebookresearch/multicalibrated_llm_measurement>.
 
 ## Keywords
 
