@@ -58,6 +58,9 @@ env/
 # Logs
 *.log
 
+# Local R library for the ReadMe2 baseline attempt
+cap_analysis/.rlibs/
+
 # LLM related
 .claude/
 CLAUDE.md

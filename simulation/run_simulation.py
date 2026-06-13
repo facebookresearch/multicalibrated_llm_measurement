@@ -6,7 +6,7 @@
 """Reproduce simulation results: prevalence estimation bias under covariate shift.
 
 Generates:
-  - Figure 1 (paper):  4-method bias line plot (CC, RG, Isotonic, MCGrad), clipped ±40%
+  - Figure 1 (paper):  4-method bias line plot (CC, RG, Global recal., MCGrad), clipped ±40%
   - Figure S2 (SI):    RMSE for the same 4 methods
   - Figure S3 (SI):    All 7 methods bias line plot
   - Console summary table
@@ -83,7 +83,7 @@ print("Generating Figure 1 (4-method bias line plot)...")
 methods_main = [
     ('Classify & Count', results['avg_cc'], '#e41a1c', '-'),
     ('Rogan-Gladen',     results['avg_rg'], '#377eb8', '-'),
-    ('Isotonic Regression', results['avg_calibrated'], '#ff7f00', '-'),
+    ('Global recalibration', results['avg_calibrated'], '#ff7f00', '-'),
     ('MCGrad',           results['avg_multicalibrated'], '#4daf4a', '-'),
 ]
 
@@ -116,7 +116,7 @@ print("Generating Figure S2 (RMSE)...")
 methods_rmse = [
     ('Classify & Count',    np.sqrt(results['mse_cc']),            '#e41a1c', '-'),
     ('Rogan-Gladen',        np.sqrt(results['mse_rg']),            '#377eb8', '-'),
-    ('Isotonic Regression', np.sqrt(results['mse_calibrated']),    '#ff7f00', '-'),
+    ('Global recalibration', np.sqrt(results['mse_calibrated']),    '#ff7f00', '-'),
     ('MCGrad',              np.sqrt(results['mse_multicalibrated']), '#4daf4a', '-'),
 ]
 
@@ -150,7 +150,7 @@ methods_all = [
     ('Rogan-Gladen',        results['avg_rg'],           '#2ca02c', '-'),
     ('PACC',                results['avg_pacc'],         '#bcbd22', '-'),
     ('SLD (EMQ)',           results['avg_sld'],          '#17becf', '-'),
-    ('Isotonic Regression', results['avg_calibrated'],   '#ff7f00', '-'),
+    ('Global recalibration', results['avg_calibrated'],   '#ff7f00', '-'),
     ('MCGrad',              results['avg_multicalibrated'], '#4daf4a', '-'),
 ]
 
@@ -158,7 +158,7 @@ fig3, ax3 = plt.subplots(figsize=(7, 3.5))
 
 for name, bias_curve, color, ls in methods_all:
     lw = 2.0 if name in ('MCGrad', 'Classify & Count') else 1.2
-    alpha = 1.0 if name in ('MCGrad', 'Classify & Count', 'Isotonic Regression') else 0.6
+    alpha = 1.0 if name in ('MCGrad', 'Classify & Count', 'Global recalibration') else 0.6
     ax3.plot(deltas, bias_curve, color=color, linestyle=ls, linewidth=lw,
              label=name, zorder=3, alpha=alpha)
 
@@ -196,7 +196,7 @@ all_methods_summary = [
     ('Rogan-Gladen',        results['avg_rg'],               results['mse_rg']),
     ('PACC',                results['avg_pacc'],             results['mse_pacc']),
     ('SLD (EMQ)',           results['avg_sld'],              results['mse_sld']),
-    ('Isotonic Regression', results['avg_calibrated'],       results['mse_calibrated']),
+    ('Global recalibration', results['avg_calibrated'],       results['mse_calibrated']),
     ('MCGrad',              results['avg_multicalibrated'],  results['mse_multicalibrated']),
 ]
 
