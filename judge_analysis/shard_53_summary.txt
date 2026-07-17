@@ -1,0 +1,35 @@
+===============================================================================
+SHARD 53 JUDGMENT SUMMARY
+===============================================================================
+
+Task: Binary helpfulness judgment of 100 Chinese assistant responses
+Judge: Claude Sonnet 4.5 (manual calibrated judgment)
+Date: 2026-07-02
+
+Criteria:
+  HELPFUL (Yes) = Directly addresses request, accurate, relevant, usable
+  NOT HELPFUL (No) = Off-topic, evasive, wrong, incomplete, fails to engage
+
+Results:
+  Total documents:   100
+  Helpful (Yes):      83  (83.0%)
+  Not Helpful (No):   17  (17.0%)
+
+Notable patterns in "No" judgments:
+  - Profanity/gibberish responses (zh_5305, zh_5306, zh_5332, zh_5385)
+  - Completely off-topic (zh_5303: PowerPoint→minesweeper, zh_5342: panda→Discord)
+  - Evasive non-engagement (zh_5307, zh_5308, zh_5319, zh_5339)
+  - Dismissive/useless (zh_5324: "already forgotten", zh_5341, zh_5357, zh_5381)
+  - Generic non-answers (zh_5361, zh_5362, zh_5359)
+
+Output:
+  /Users/flinder/mc_measurement/judge_analysis/data/inference_output/sonnet-binary/shard_53.csv
+  Format: id,answer,language (header + 100 data rows)
+
+Quality control:
+  ✓ All 100 IDs from input present in output
+  ✓ IDs match exactly (zh_5300 to zh_5399)
+  ✓ All judgments manually calibrated
+  ✓ CSV format correct
+
+===============================================================================

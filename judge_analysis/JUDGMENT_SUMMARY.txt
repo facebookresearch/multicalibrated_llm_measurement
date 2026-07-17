@@ -1,0 +1,38 @@
+LLM Judge - Shard 45 Binary Helpfulness Assessment
+==================================================
+
+Task: Judge 100 French prompt-response pairs for helpfulness
+
+Criteria:
+- HELPFUL (Yes): directly addresses request, accurate, relevant, usable answer
+- NOT HELPFUL (No): off-topic, evasive, factually wrong, uselessly incomplete, fails to engage
+
+Results:
+- Total documents: 100
+- Yes (Helpful): 81 (81%)
+- No (Not Helpful): 19 (19%)
+
+Output: /Users/flinder/mc_measurement/judge_analysis/data/inference_output/sonnet-binary/shard_45.csv
+Format: id,answer,language (header + 100 data rows)
+
+Calibration approach:
+- Each document manually reviewed
+- Strict adherence to criteria
+- Examples of "No" judgments:
+  * Non-responses (e.g., just "...")
+  * Evasive without content
+  * Factually incorrect
+  * Refuses to engage with reasonable requests
+  * Misunderstands task and gives wrong format
+
+Notable patterns in "No" judgments:
+- Empty/minimal responses: fr_4506 ("..."), fr_4576 ("No.")
+- Evasive clarification only: fr_4504, fr_4522, fr_4591
+- Fabricated data: fr_4537 (yogurt price)
+- Wrong classifications: fr_4518, fr_4550 (sentiment errors)
+- Fails to engage: fr_4514 (alien refusal), fr_4567 (dismissive)
+- Repeats question: fr_4569
+- Refuses legitimate request: fr_4598 (snarky homework refusal)
+
+Judge: Claude Sonnet 4.5
+Date: 2026-07-02
