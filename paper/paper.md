@@ -1,5 +1,5 @@
 ---
-title: "Calibrate Once, Measure Within Support: Multicalibration for Unbiased Prevalence Estimation from Political Text"
+title: "Multicalibration for Unbiased Prevalence Estimation"
 author:
   - Fridolin Linder^1^
   - Thomas Leeper^1^
@@ -20,11 +20,6 @@ header-includes:
 ---
 
 ^1^Meta Platforms Inc., ^2^The London School of Economics and Political Science
-
-**Corresponding author:** Fridolin Linder (flinder@meta.com)
-
-**Keywords:** text as data | measurement validity | large language models | quantification | covariate shift | calibration
-
 
 ## Abstract
 
@@ -102,7 +97,7 @@ Two caveats temper the within-support numbers. First, the gold standard is itsel
 
 # Employment prevalence with exact ground truth
 
-As a check with exact ground truth, we estimate employment prevalence from American Community Survey microdata via the *folktables* package. The true rate in any subpopulation is known, and the classifier is an ordinary logistic regression rather than an LLM, so this confirms the correction is not specific to language models or to noisy gold labels. We predict employment from 16 sociodemographic features, training on eight states (2016--2018; approximately 1.5M observations) and calibrating on a held-out set ($n\approx 644{,}000$). Because employment rates vary sharply by age (76% for ages 25--54 versus 17% for 65+), we construct covariate shifts by resampling the test set to be young-skewed, old-skewed, or bimodal, yielding true employment rates from 12.8% to 46.0%; all calibration parameters are fixed across scenarios. We evaluate both on in-distribution states and on six held-out states.
+As a check with exact ground truth, we estimate employment prevalence from American Community Survey microdata. The true rate in any subpopulation is known, and the classifier is an ordinary logistic regression rather than an LLM, so this confirms the correction is not specific to language models or to noisy gold labels. We predict employment from 16 sociodemographic features, training on eight states (2016--2018; approximately 1.5M observations) and calibrating on a held-out set ($n\approx 644{,}000$). Because employment rates vary sharply by age (76% for ages 25--54 versus 17% for 65+), we construct covariate shifts by resampling the test set to be young-skewed, old-skewed, or bimodal, yielding true employment rates from 12.8% to 46.0%; all calibration parameters are fixed across scenarios. We evaluate both on in-distribution states and on six held-out states.
 
 ![](images/figure_acs_v5.png){width=100%}
 
