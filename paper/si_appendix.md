@@ -55,7 +55,7 @@ $$\tilde{h}_i^{(t)} = \frac{(\hat{\pi}^{(t)} / \pi_s) \cdot h(X_i^*)}{(\hat{\pi}
 
 In the simulation, global calibration applies a multiplicative correction:
 $$h_{\text{cal}}(X) = c \cdot h(X)$$
-where $c = \bar{Y}_{\text{cal}} / \bar{h}_{\text{cal}}$ is estimated on calibration data. This is the curve labeled "global recalibration" in Figure 1 and Figures S1--S2; it is multiplicative rescaling, not isotonic regression. (In the simulation the two would coincide because the score takes only two values, each mapped to its stratum frequency; we therefore report the multiplicative version and reserve the isotonic-vs-feature-conditional contrast for the empirical applications, where scores coarsen the features.) In the empirical applications, global calibration uses isotonic regression on the probability scores.
+where $c = \bar{Y}_{\text{cal}} / \bar{h}_{\text{cal}}$ is estimated on calibration data. This is the curve labeled "global recalibration" in Figures S1, S2, and S4; it is multiplicative rescaling, not isotonic regression. (In the simulation the two would coincide because the score takes only two values, each mapped to its stratum frequency; we therefore report the multiplicative version and reserve the isotonic-vs-feature-conditional contrast for the empirical applications, where scores coarsen the features.) In the empirical applications, global calibration uses isotonic regression on the probability scores.
 
 ### S1.7 Multicalibration
 
@@ -123,7 +123,15 @@ Verbalized confidence elicitation partially addresses both problems by producing
 
 The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, diverges catastrophically on Llama's verbalized confidence scores, producing prevalence estimates biased by +33 to +60pp. This occurs because the verbalized scores are not calibrated posteriors, violating SLD's core assumption. PACC shows moderate bias (+0.6 to +5.9pp within calibration, +2.4 to +5.9pp OOD). Full results including SLD and PACC are available in the replication code.
 
-## S3. Detailed Results Tables
+## S3. Empirical results: ACS employment benchmark and detailed tables
+
+As a check with exact ground truth, we estimate employment prevalence from American Community Survey microdata via the *folktables* package. The true rate in any subpopulation is known, and the classifier is an ordinary logistic regression rather than an LLM, so this confirms the correction is not specific to language models or to noisy gold labels. We predict employment from 16 sociodemographic features, training on eight states (2016--2018; approximately 1.5M observations) and calibrating on a held-out set ($n\approx 644{,}000$). Because employment rates vary sharply by age (76% for ages 25--54 versus 17% for 65+), we construct covariate shifts by resampling the test set to be young-skewed, old-skewed, or bimodal, yielding true employment rates from 12.8% to 46.0%; all calibration parameters are fixed across scenarios. We evaluate both on in-distribution states and on six held-out states.
+
+![](images/figure_acs_v5.png){width=100%}
+
+*Figure S5. Absolute prevalence bias (percentage points) for the ACS employment benchmark, by method and age-shift scenario, for in-distribution (left) and out-of-distribution (right) states. Marker shape denotes the synthetic age distribution; horizontal lines are per-method means. MCGrad is near-unbiased across all in-distribution scenarios (including the bimodal shift that defeats IPW) and degrades only modestly out of distribution; Rogan-Gladen and isotonic regression grow with the age shift.*
+
+The pattern matches the simulation and CAP results (Figure S5; full numbers in Table S1). Rogan-Gladen fails by 12--19pp and SLD comparably; Classify \& Count and isotonic regression show moderate but growing bias (up to 8pp); IPW is good on simple shifts ($\le 1.2$pp) but fails on the bimodal shift (+4.7pp in-distribution, +6.3pp out-of-distribution) where the density ratio is hard to model. Multicalibration achieves $\le 0.27$pp bias across all in-distribution scenarios, including the bimodal shift, and degrades only modestly out of distribution (0.88--1.35pp), reflecting geographic shift along a dimension the calibration set did not span. Across both applications the story is consistent: multicalibration is near-unbiased when the target's features lie within the calibration support and degrades predictably when they do not: the scope condition has visible, interpretable bite rather than silent failure.
 
 ### Table S1: ACS Employment Prevalence Estimation Bias
 
@@ -152,11 +160,19 @@ The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, d
 
 *CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; SLD = Saerens-Latinne-Decaestecker (label shift, applied to probability scores); IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
 
-## S4. Simulation: RMSE
+## S4. Simulation
+
+We illustrate the mechanism in a setting simple enough to verify by hand. We generate synthetic data with a binary covariate $X\in\{0,1\}$ and outcome $Y$ with $P(Y=1\mid X=1)=0.85$ and $P(Y=1\mid X=0)=0.15$. A classifier produces deterministic, systematically biased scores (a 10% multiplicative bias within each stratum, so $\hat p=0.135$ when $X=0$ and $\hat p=0.935$ when $X=1$), wrong within each stratum but corrected to the true prevalence by a single global recalibration step on the balanced training distribution $P(X=0)=0.5$. We estimate prevalence on target distributions with $P(X=0)$ ranging from 0.01 to 0.99, holding all calibration parameters fixed at their training values, over 50 replications.
+
+![](images/figure_sim_lineplot.png){width=88%}
+
+*Figure S4. Relative prevalence bias under covariate shift (50 runs). The x-axis is the change in $P(X=0)$ from the training value of 0.5. Classify \& Count and Rogan-Gladen diverge with shift; global recalibration (multiplicative, the method of Section S1.6) shows moderate bias; the multicalibrated estimator stays near zero. Cropped at $\pm40\%$; see Figure S2 for the full range and additional methods.*
+
+At the training distribution ($\Delta P(X=0)=0$) all methods are approximately unbiased (Figure S4). As the target shifts, they diverge: Rogan-Gladen is most unstable, its ratio form amplifying error beyond $\pm40\%$; Classify \& Count grows in the same direction; global recalibration shows moderate but nonzero bias, up to roughly 15% at the most extreme shift. The multicalibrated estimator (here, stratum-specific additive corrections) maintains near-zero bias; RMSE tracks bias closely (Figure S1), confirming the reduction does not come at the cost of variance.
 
 ![](images/figure_sim_rmse.png){width=100%}
 
-*Figure S1: Root mean squared error (RMSE) under covariate shift for the same four methods shown in Figure 1 (Classify \& Count, Rogan-Gladen, multiplicative global recalibration, MCGrad), averaged over 50 simulation runs. RMSE closely tracks absolute bias for all methods, confirming that variance is small relative to bias at this sample size. MCGrad maintains the lowest RMSE across all shift levels.*
+*Figure S1: Root mean squared error (RMSE) under covariate shift for the same four methods shown in Figure S4 (Classify \& Count, Rogan-Gladen, multiplicative global recalibration, MCGrad), averaged over 50 simulation runs. RMSE closely tracks absolute bias for all methods, confirming that variance is small relative to bias at this sample size. MCGrad maintains the lowest RMSE across all shift levels.*
 
 ## S5. Simulation: All Methods
 
