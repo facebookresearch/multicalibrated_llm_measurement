@@ -1,5 +1,5 @@
 ---
-title: "Calibrate Once, Measure Within Support: Multicalibration for Unbiased Prevalence Estimation from Political Text"
+title: "Multicalibration for Unbiased Prevalence Estimation from Political Text"
 author:
   - Fridolin Linder^1^
   - Thomas Leeper^1^
