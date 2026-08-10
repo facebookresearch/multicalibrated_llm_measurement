@@ -13,6 +13,7 @@ Usage:
 """
 
 import warnings
+import json
 import logging
 import os
 import sys
@@ -301,6 +302,20 @@ fig.tight_layout()
 fig.savefig(os.path.join(IMG_DIR, 'figure_acs_v5.png'), dpi=300, bbox_inches='tight')
 print(f"  Saved {os.path.join(IMG_DIR, 'figure_acs_v5.png')}")
 plt.close(fig)
+
+# Dump absolute biases (pp) so the combined main-text figure can be rebuilt
+# without re-running the full analysis.
+_bias_dump = {
+    'methods': methods,
+    'within_scenarios': [n for n, _, _ in within_cal_scenarios],
+    'ood_scenarios': [n for n, _, _ in ood_scenarios],
+    'within': {m: list(map(float, within_biases[m])) for m in methods},
+    'ood': {m: list(map(float, ood_biases[m])) for m in methods},
+}
+_dump_path = os.path.join(IMG_DIR, 'acs_biases.json')
+with open(_dump_path, 'w') as _f:
+    json.dump(_bias_dump, _f, indent=2)
+print(f"  Saved {_dump_path}")
 
 # ============================================================
 # Results summary

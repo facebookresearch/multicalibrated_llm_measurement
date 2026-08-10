@@ -13,6 +13,7 @@ SI Figure S4 (score distribution), plus a console results summary.
 Usage:
     conda run -n mcgrad_tutorials python3 cap_analysis/opus/run_cap_opus.py
 """
+import json
 import logging
 import os
 import warnings
@@ -317,6 +318,22 @@ ax2.legend(fontsize=7, loc='upper left', title='Scenario', title_fontsize=7,
 fig.tight_layout()
 fig.savefig(os.path.join(IMG_DIR, 'figure_cap_v5.png'), dpi=300, bbox_inches='tight')
 print(f"  Saved {os.path.join(IMG_DIR, 'figure_cap_v5.png')}")
+
+# Dump absolute biases (pp) so the combined main-text figure can be rebuilt
+# without re-running the full analysis.
+_bias_dump = {
+    'methods': methods,
+    'within_scenarios': [s.split('\n')[0] for s in WITHIN_CAL_SCENARIOS],
+    'ood_scenarios': [s.split('\n')[0] for s in OOD_SCENARIOS],
+    'within': {m: [abs((all_results[s][m] - all_results[s]['True Prevalence']) * 100)
+                   for s in WITHIN_CAL_SCENARIOS] for m in methods},
+    'ood': {m: [abs((all_results[s][m] - all_results[s]['True Prevalence']) * 100)
+                for s in OOD_SCENARIOS] for m in methods},
+}
+_dump_path = os.path.join(IMG_DIR, 'cap_biases.json')
+with open(_dump_path, 'w') as _f:
+    json.dump(_bias_dump, _f, indent=2)
+print(f"  Saved {_dump_path}")
 
 # ============================================================
 # 7. SI Figure S4: Score distribution by label and sub-population
