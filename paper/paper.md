@@ -62,7 +62,7 @@ The bias reduction rests on two conditions. First, the target's feature values m
 
 # Simulation
 
-We first illustrate the mechanism in a setting simple enough to verify by hand. We generate synthetic data with a binary covariate $X\in\{0,1\}$ and outcome $Y$ with $P(Y=1\mid X=1)=0.85$ and $P(Y=1\mid X=0)=0.15$. A classifier produces deterministic, systematically biased scores (a 10% multiplicative bias within each stratum, so $\hat p=0.135$ when $X=0$ and $\hat p=0.935$ when $X=1$), wrong within each stratum but corrected to the true prevalence by a single global recalibration step on the balanced training distribution $P(X=0)=0.5$. We then estimate prevalence on target distributions with $P(X=0)$ ranging from 0.01 to 0.99, holding all calibration parameters fixed at their training values, over 50 replications.
+We first illustrate the mechanism in a setting simple enough to verify by hand. We generate synthetic data with a binary covariate $X\in\{0,1\}$ and outcome $Y$ with $P(Y=1\mid X=1)=0.85$ and $P(Y=1\mid X=0)=0.15$. A classifier produces deterministic, systematically biased scores (a 10% multiplicative bias within each stratum, so $\hat p=0.135$ when $X=0$ and $\hat p=0.935$ when $X=1$). We then estimate prevalence on target distributions with $P(X=0)$ ranging from 0.01 to 0.99, holding all calibration parameters fixed at their training values, over 50 replications.
 
 ![](images/figure_sim_lineplot.png){width=88%}
 
