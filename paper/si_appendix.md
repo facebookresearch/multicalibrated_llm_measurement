@@ -67,9 +67,31 @@ In the empirical applications, we use MCGrad [@tax2026mcgrad], a multicalibratio
 
 ### S1.8 Multi-accuracy versus multicalibration
 
-The main text states the universal-adaptability guarantee for a multicalibrated predictor and computes one with MCGrad. The property strictly required, however, is weaker. A predictor $f$ is *multi-accurate* with respect to a group class $\mathcal{G}$ if $\mathbb{E}[f(X)-Y \mid X\in G]=0$ for every $G\in\mathcal{G}$: its signed error averages to zero within each group, though it need not be calibrated at each score level within a group. Multi-accuracy alone is sufficient for unbiased prevalence on every target reweighting captured by $\mathcal{G}$: the universal-adaptability identity in the main text goes through verbatim, because it uses only that the within-cell error $\epsilon_G$ vanishes, which multi-accuracy guarantees [@kim2022universal]. (For a single fixed target, only the still weaker $\sum_G w_G^* \epsilon_G = 0$ is needed; multi-accuracy across all of $\mathcal{G}$ is what makes one instrument valid for *every* target, i.e., target-independent.) Multi-accuracy does not by itself imply pointwise accuracy $\mathbb{E}[f(X)\mid X=x]=\mathbb{E}[Y\mid X=x]$ unless $\mathcal{G}$ is rich enough to separate the relevant regions of $X$ (in the limit, singletons).
+The main text states the universal-adaptability guarantee for a multicalibrated predictor and computes one with MCGrad. The property strictly required for prevalence estimation is weaker. Let $e(X,Y)=f(X)-Y$. A predictor is *multi-accurate* with respect to a group class $\mathcal{G}$ if
+$$\mathbb{E}[\mathbf{1}\{X\in G\}e(X,Y)]=0 \qquad \text{for every }G\in\mathcal{G}.$$
+This is equivalent to zero mean signed error within every group of positive probability. Multicalibration implies this condition by averaging $\mathbb{E}[Y\mid f(X)=v,X\in G]=v$ over the prediction values $v$ within each group.
 
-Multi-accuracy is therefore the minimal sufficient condition, but multicalibration is the better practical target, for three reasons. First, practical post-hoc algorithms produce multicalibrated predictors at no extra cost: MCGrad [@tax2026mcgrad], which we use, fits the residual structure of $X$ by gradient boosting and naturally approximates multicalibration (Section S1.7). Second, multicalibration extends the guarantee to cases where multi-accuracy is insufficient: when the shift is mediated by the device's own scores (e.g., score-based selection of documents to hand-code), when prevalence is estimated within score strata, or when scores enter a downstream regression. Third, a predictor multicalibrated over a rich group class $\mathcal{G}$ is automatically multi-accurate over any subgroup measurable with respect to $\mathcal{G}$, providing robustness to misspecifying which of the calibrated features drive the shift.
+Let $P$ and $P^*$ denote the source and target populations, and let $r(X)=dP_X^*/dP_X$ be their density ratio. Under covariate shift and overlap,
+$$\mathbb{E}^*[f(X)-Y]=\mathbb{E}[r(X)e(X,Y)].$$
+Suppose the target shift is representable by the group class, meaning that for some $G_1,\ldots,G_J\in\mathcal{G}$ and coefficients $a_1,\ldots,a_J$,
+$$r(X)=\sum_{j=1}^J a_j\mathbf{1}\{X\in G_j\}.$$
+Multi-accuracy then gives
+$$
+\mathbb{E}^*[f(X)-Y]
+=\sum_{j=1}^J a_j\mathbb{E}[\mathbf{1}\{X\in G_j\}e(X,Y)]
+=0.
+$$
+Thus one source-fitted predictor is unbiased for every target whose density ratio lies in the linear span of the calibrated group indicators [@kim2022universal]. For a single fixed target, only the weaker condition $\mathbb{E}[r(X)e(X,Y)]=0$ is necessary.
+
+The same argument gives an approximate result. If a function $g$ in the span of the group indicators approximates $r$, then
+$$
+\left|\mathbb{E}^*[e(X,Y)]\right|
+\leq \left|\mathbb{E}[g(X)e(X,Y)]\right|
++\mathbb{E}[|r(X)-g(X)|],
+$$
+where the final term uses $|e(X,Y)|\leq1$. The first term reflects remaining multi-accuracy error and the second reflects how well the calibrated group class represents the target shift.
+
+Multicalibration remains the more useful practical target. It also controls calibration within score levels and therefore applies when selection or downstream analysis depends on the model's own scores. MCGrad [@tax2026mcgrad] approximates this property using the feature and score interactions learned by gradient-boosted trees (Section S1.7). Other procedures can provide the same population guarantee if they achieve the required group-level residual balance [@hebertjohnson2018multicalibration; @gopalan2022omnipredictors; @detommaso2024mcllm].
 
 ### S1.9 Estimation and implementation details
 
