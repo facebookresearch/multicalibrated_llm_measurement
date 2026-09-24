@@ -14,7 +14,7 @@ header-includes:
 
 ## S1. Formal Definitions of Prevalence Estimation Methods
 
-This section provides full mathematical definitions of the seven prevalence estimation methods compared in the simulation study.
+This section defines the prevalence estimation methods used in the simulation and the applications. The simulation compares seven of them (Figure S2); main-text Figure 1 shows four.
 
 **Setup.** Let $h(X) \in [0,1]$ denote the device's probabilistic prediction for input $X$, with true label $Y \in \{0,1\}$. The goal is to estimate the target prevalence $\pi^* = P^*(Y=1)$ using only unlabeled target data $\{X_i^*\}_{i=1}^n$ and calibration parameters estimated from a labeled source dataset.
 
@@ -27,7 +27,7 @@ $$\hat{\pi}_{\text{raw}} = \frac{1}{n} \sum_{i=1}^n h(X_i^*)$$
 Given a threshold $\tau$ chosen on calibration data:
 $$\hat{\pi}_{\text{CC}} = \frac{1}{n} \sum_{i=1}^n \mathbf{1}[h(X_i^*) \geq \tau]$$
 
-In the simulation, $\tau$ is chosen so that $\hat{\pi}_{\text{CC}}$ matches the true prevalence on the calibration set.
+In the simulation, $\tau$ is the score quantile at which $\hat{\pi}_{\text{CC}}$ matches the true prevalence on the calibration set.
 
 ### S1.3 Rogan-Gladen (Adjusted Count)
 
@@ -53,17 +53,11 @@ $$\tilde{h}_i^{(t)} = \frac{(\hat{\pi}^{(t)} / \pi_s) \cdot h(X_i^*)}{(\hat{\pi}
 
 ### S1.6 Global Calibration
 
-In the simulation, global calibration applies a multiplicative correction:
-$$h_{\text{cal}}(X) = c \cdot h(X)$$
-where $c = \bar{Y}_{\text{cal}} / \bar{h}_{\text{cal}}$ is estimated on calibration data. This is the curve labeled "global recalibration" in main-text Figure 1 and in Figures S1--S2; it is multiplicative rescaling, not isotonic regression. (In the simulation the two would coincide because the score takes only two values, each mapped to its stratum frequency; we therefore report the multiplicative version and reserve the isotonic-vs-feature-conditional contrast for the empirical applications, where scores coarsen the features.) In the empirical applications, global calibration uses isotonic regression on the probability scores.
+Global calibration fits a monotone map $m$ from scores to probabilities by isotonic regression of $Y$ on $h(X)$ in the calibration data, and estimates $\hat{\pi}_{\text{iso}} = \frac{1}{n}\sum_i m(h(X_i^*))$. The same estimator is used in the simulation and in both applications. Because $m$ depends on the score alone, it is calibrated at the calibration sample's feature mix but not within feature-defined groups whose scores overlap.
 
 ### S1.7 Multicalibration
 
-In the simulation, which has a single binary covariate, multicalibration reduces to stratum-specific additive corrections:
-$$h_{\text{mc}}(X) = h(X) + \hat{\epsilon}_g \quad \text{for } X \in \text{stratum } g$$
-where $\hat{\epsilon}_g = \bar{Y}_g - \bar{h}_g$ is estimated on calibration data within each stratum.
-
-In the empirical applications, we use MCGrad [@tax2026mcgrad], a multicalibration algorithm based on gradient boosting. MCGrad operates in logit space: given a base predictor $f_0(X)$ with logit $F_0(X) = \text{logit}(f_0(X))$, it iteratively fits gradient boosted decision trees (GBDTs) on the residuals between labels and current predictions. At each round $t$, a GBDT $g_t$ is trained with the current logit predictions as `init_score` and with the feature matrix consisting of the segment features (categorical and numerical) augmented by the current logit prediction as an additional input feature. The logit predictor is then updated as $F_{t+1}(X) = \alpha_t \cdot (F_t(X) + g_t(X))$, where $\alpha_t$ is a single scalar unshrinkage factor estimated by a one-parameter logistic regression of the labels on the combined logit $F_t(X) + g_t(X)$, applied to the full running logit rather than to the increment alone. Because $\alpha_t$ is fit to maximize fit of the combined logit to the labels at each round, it counteracts the shrinkage induced by the GBDT learning rate without disturbing the relative structure the trees discovered; @tax2026mcgrad establish that the resulting sequence converges to a multicalibrated predictor. By including the prediction as a feature, GBDT splits naturally discover miscalibrated regions in the joint space of features and score levels, thereby approximating multicalibration without requiring explicit group specification. Early stopping on a validation set prevents overfitting. MCGrad uses LightGBM as the GBDT implementation. See @tax2026mcgrad for convergence results and deployment details. Our claims are algorithm-agnostic: any procedure producing a multi-accurate, a fortiori multicalibrated, predictor over the feature class delivers the same guarantee, and several exist [@hebertjohnson2018multicalibration; @gopalan2022omnipredictors; @detommaso2024mcllm]. An open-source implementation of MCGrad is available at <https://mcgrad.dev>.
+In the simulation and in both empirical applications, we use MCGrad [@tax2026mcgrad], a multicalibration algorithm based on gradient boosting. MCGrad operates in logit space: given a base predictor $f_0(X)$ with logit $F_0(X) = \text{logit}(f_0(X))$, it iteratively fits gradient boosted decision trees (GBDTs) on the residuals between labels and current predictions. At each round $t$, a GBDT $g_t$ is trained with the current logit predictions as `init_score` and with the feature matrix consisting of the segment features (categorical and numerical) augmented by the current logit prediction as an additional input feature. The logit predictor is then updated as $F_{t+1}(X) = \alpha_t \cdot (F_t(X) + g_t(X))$, where $\alpha_t$ is a single scalar unshrinkage factor estimated by a one-parameter logistic regression of the labels on the combined logit $F_t(X) + g_t(X)$, applied to the full running logit rather than to the increment alone. Because $\alpha_t$ is fit to maximize fit of the combined logit to the labels at each round, it counteracts the shrinkage induced by the GBDT learning rate without disturbing the relative structure the trees discovered; @tax2026mcgrad establish that the resulting sequence converges to a multicalibrated predictor. By including the prediction as a feature, GBDT splits naturally discover miscalibrated regions in the joint space of features and score levels, thereby approximating multicalibration without requiring explicit group specification. Early stopping on a validation set prevents overfitting. MCGrad uses LightGBM as the GBDT implementation. See @tax2026mcgrad for convergence results and deployment details. Our claims are algorithm-agnostic: any procedure producing a multi-accurate, a fortiori multicalibrated, predictor over the feature class delivers the same guarantee, and several exist [@hebertjohnson2018multicalibration; @gopalan2022omnipredictors; @detommaso2024mcllm]. An open-source implementation of MCGrad is available at <https://mcgrad.dev>.
 
 ### S1.8 Multi-accuracy versus multicalibration
 
@@ -95,7 +89,7 @@ Multicalibration remains the more useful practical target. It also controls cali
 
 ### S1.9 Estimation and implementation details
 
-**Simulation.** Each of the 50 runs uses $n=10{,}000$ observations, with fresh calibration data drawn at $P(X=0)=0.5$; bias and RMSE are evaluated on 20 target distributions with $P(X=0)\in[0.01,0.99]$. Definitions of all seven methods are in Section S1.
+**Simulation.** The data-generating process is given in the main text: $X\sim\text{Bernoulli}(1-P(X=0))$, $U\sim N(0,1)$ independent of $X$, $P(Y=1\mid X,U)=\sigma(a_X+bU)$ with $a_0=-2$, $a_1=1.5$, $b=1.5$, and classifier score $h=\sigma(a_X+bU+\delta_X)$ with $\delta_0=0.8$, $\delta_1=0$. Each of the 50 runs draws a fresh calibration sample of $n=10{,}000$ at $P(X=0)=0.5$, fits every estimator once, and evaluates bias and RMSE on 20 fresh unlabeled targets of $n=10{,}000$ with $P(X=0)$ evenly spaced in $[0.01,0.99]$. Bias is relative to each target sample's realized prevalence. MCGrad uses $X$ as its single categorical feature with default hyperparameters. Definitions of all seven methods are in Section S1.
 
 **Comparative Agendas Project.** The two campaigns (binary Yes/No and direct probability elicitation) were run separately to avoid anchoring. Benchmark implementations: Rogan-Gladen uses TPR/FPR estimated on the calibration set; IPW estimates density ratios by logistic regression on country, document type, decade, and length; isotonic regression is fit on the scores. Per-scenario bias is in Table S2; the ReadMe comparison is in Section S7 and the Llama 3.3 70B replication in Section S2.
 
@@ -188,13 +182,13 @@ The main-text simulation (Figure 1) reports bias for the four estimators across 
 
 ![](images/figure_sim_rmse.png){width=100%}
 
-*Figure S1: Root mean squared error (RMSE) under covariate shift for the four methods in main-text Figure 1 (Classify \& Count, Rogan-Gladen, multiplicative global recalibration, MCGrad), averaged over 50 simulation runs. RMSE closely tracks absolute bias for all methods, confirming that variance is small relative to bias at this sample size. MCGrad maintains the lowest RMSE across all shift levels.*
+*Figure S1: Root mean squared error (RMSE) under covariate shift for the four methods in main-text Figure 1 (Classify \& Count, Rogan-Gladen, isotonic recalibration, MCGrad), averaged over 50 simulation runs. RMSE closely tracks absolute bias for all methods, confirming that variance is small relative to bias at this sample size. MCGrad has the lowest RMSE once the target departs from the calibration distribution.*
 
 ## S5. Simulation: All Methods
 
 ![](images/figure_sim_lineplot_all.png){width=100%}
 
-*Figure S2: Simulation bias curves for all seven methods (uncalibrated averaging, Classify \& Count, Rogan-Gladen, PACC, SLD/EMQ, multiplicative global recalibration, MCGrad). Rogan-Gladen and PACC exhibit catastrophic failure (bias exceeding -200% at extreme shifts). SLD shows large bias under covariate shift because it assumes label shift. Multiplicative global recalibration shows moderate bias, up to roughly 15% at the most extreme shift. MCGrad maintains near-zero bias throughout.*
+*Figure S2: Simulation bias curves for all seven methods (uncalibrated averaging, Classify \& Count, Rogan-Gladen, PACC, SLD/EMQ, isotonic recalibration, MCGrad). Rogan-Gladen and PACC fail badly under shift: at the most extreme shift Rogan-Gladen passes $-100\%$ (a negative prevalence) and PACC, truncated to $[0,1]$, sits at the $-100\%$ floor. SLD is biased even at the calibration distribution, because the uncalibrated scores are not the posteriors its EM step assumes, and diverges under covariate shift. Isotonic recalibration is unbiased at the calibration distribution and drifts to about $+19\%$ at the most extreme shift. MCGrad stays within about 2\% throughout.*
 
 ## S6. Claude Opus Score Distribution
 

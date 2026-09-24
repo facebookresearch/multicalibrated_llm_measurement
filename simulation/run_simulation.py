@@ -6,9 +6,9 @@
 """Reproduce simulation results: prevalence estimation bias under covariate shift.
 
 Generates:
-  - Figure 1 (paper):  4-method bias line plot (CC, RG, Global recal., MCGrad), clipped ±40%
-  - Figure S2 (SI):    RMSE for the same 4 methods
-  - Figure S3 (SI):    All 7 methods bias line plot
+  - Figure 1 (paper):  4-method bias line plot (CC, RG, isotonic, MCGrad), clipped ±40%
+  - Figure S1 (SI):    RMSE for the same 4 methods
+  - Figure S2 (SI):    All 7 methods bias line plot
   - Console summary table
 
 Usage:
@@ -42,35 +42,36 @@ plt.rcParams.update({
 })
 
 # ============================================================
-# Simulation parameters (same as notebook)
+# Simulation parameters
 # ============================================================
 B = 50
 N_SAMPLES = 10_000
 N_CALIBRATION = 10_000
 P_X0 = 0.5
-P_Y_GIVEN_X1 = 0.85
-BIAS_B = 0.9
-BIAS_C = 1.1
+# P(Y=1 | X, U) = sigmoid(a_X + b U); gives P(Y=1|X=0) ~ 0.19, P(Y=1|X=1) ~ 0.75
+INTERCEPTS = {0: -2.0, 1: 1.5}
+SLOPE = 1.5
+# Score logit offset: classifier inflates scores for X=0, calibrated for X=1
+SCORE_OFFSETS = {0: 0.8, 1: 0.0}
 SHIFT_RANGE = (0.01, 0.99)
 N_POINTS = 20
 
 # ============================================================
 # Run bootstrap simulation
 # ============================================================
-print(f"Running simulation (B={B} bootstrap iterations, n={N_SAMPLES})...")
-np.random.seed(42)
+print(f"Running simulation (B={B} runs, n={N_SAMPLES})...")
 
 results = compute_bias_curves_bootstrap(
     B=B,
     n_samples=N_SAMPLES,
     n_calibration=N_CALIBRATION,
     p_x0=P_X0,
-    p_y_given_x1=P_Y_GIVEN_X1,
-    bias_b=BIAS_B,
-    bias_c=BIAS_C,
-    original_p_x0=P_X0,
+    intercepts=INTERCEPTS,
+    slope=SLOPE,
+    score_offsets=SCORE_OFFSETS,
     shift_range=SHIFT_RANGE,
     n_points=N_POINTS,
+    seed=42,
 )
 
 deltas = results['deltas']
@@ -83,8 +84,8 @@ print("Generating Figure 1 (4-method bias line plot)...")
 methods_main = [
     ('Classify & Count', results['avg_cc'], '#e41a1c', '-'),
     ('Rogan-Gladen',     results['avg_rg'], '#377eb8', '-'),
-    ('Global recalibration', results['avg_calibrated'], '#ff7f00', '-'),
-    ('MCGrad',           results['avg_multicalibrated'], '#4daf4a', '-'),
+    ('Isotonic recalibration', results['avg_isotonic'], '#ff7f00', '-'),
+    ('MCGrad',           results['avg_mcgrad'], '#4daf4a', '-'),
 ]
 
 fig1, ax1 = plt.subplots(figsize=(7, 3.5))
@@ -109,15 +110,15 @@ print(f"  Saved {os.path.join(IMG_DIR, 'figure_sim_lineplot.png')}")
 plt.close(fig1)
 
 # ============================================================
-# Figure S2: RMSE (same 4 methods)
+# Figure S1: RMSE (same 4 methods)
 # ============================================================
-print("Generating Figure S2 (RMSE)...")
+print("Generating Figure S1 (RMSE)...")
 
 methods_rmse = [
     ('Classify & Count',    np.sqrt(results['mse_cc']),            '#e41a1c', '-'),
     ('Rogan-Gladen',        np.sqrt(results['mse_rg']),            '#377eb8', '-'),
-    ('Global recalibration', np.sqrt(results['mse_calibrated']),    '#ff7f00', '-'),
-    ('MCGrad',              np.sqrt(results['mse_multicalibrated']), '#4daf4a', '-'),
+    ('Isotonic recalibration', np.sqrt(results['mse_isotonic']),    '#ff7f00', '-'),
+    ('MCGrad',              np.sqrt(results['mse_mcgrad']), '#4daf4a', '-'),
 ]
 
 fig2, ax2 = plt.subplots(figsize=(7, 3.5))
@@ -140,9 +141,9 @@ print(f"  Saved {os.path.join(IMG_DIR, 'figure_sim_rmse.png')}")
 plt.close(fig2)
 
 # ============================================================
-# Figure S3: All 7 methods bias line plot
+# Figure S2: All 7 methods bias line plot
 # ============================================================
-print("Generating Figure S3 (all 7 methods)...")
+print("Generating Figure S2 (all 7 methods)...")
 
 methods_all = [
     ('Uncalibrated',        results['avg_uncalibrated'], '#1f77b4', '--'),
@@ -150,15 +151,15 @@ methods_all = [
     ('Rogan-Gladen',        results['avg_rg'],           '#2ca02c', '-'),
     ('PACC',                results['avg_pacc'],         '#bcbd22', '-'),
     ('SLD (EMQ)',           results['avg_sld'],          '#17becf', '-'),
-    ('Global recalibration', results['avg_calibrated'],   '#ff7f00', '-'),
-    ('MCGrad',              results['avg_multicalibrated'], '#4daf4a', '-'),
+    ('Isotonic recalibration', results['avg_isotonic'],   '#ff7f00', '-'),
+    ('MCGrad',              results['avg_mcgrad'], '#4daf4a', '-'),
 ]
 
 fig3, ax3 = plt.subplots(figsize=(7, 3.5))
 
 for name, bias_curve, color, ls in methods_all:
     lw = 2.0 if name in ('MCGrad', 'Classify & Count') else 1.2
-    alpha = 1.0 if name in ('MCGrad', 'Classify & Count', 'Global recalibration') else 0.6
+    alpha = 1.0 if name in ('MCGrad', 'Classify & Count', 'Isotonic recalibration') else 0.6
     ax3.plot(deltas, bias_curve, color=color, linestyle=ls, linewidth=lw,
              label=name, zorder=3, alpha=alpha)
 
@@ -178,8 +179,8 @@ plt.close(fig3)
 print("\n" + "=" * 70)
 print("SIMULATION RESULTS SUMMARY")
 print("=" * 70)
-print(f"Parameters: B={B}, n={N_SAMPLES}, P(Y=1|X=1)={P_Y_GIVEN_X1}, "
-      f"bias_b={BIAS_B}, bias_c={BIAS_C}")
+print(f"Parameters: B={B}, n={N_SAMPLES}, intercepts={INTERCEPTS}, "
+      f"slope={SLOPE}, score_offsets={SCORE_OFFSETS}")
 print()
 
 # Bin shifts for summary
@@ -196,8 +197,8 @@ all_methods_summary = [
     ('Rogan-Gladen',        results['avg_rg'],               results['mse_rg']),
     ('PACC',                results['avg_pacc'],             results['mse_pacc']),
     ('SLD (EMQ)',           results['avg_sld'],              results['mse_sld']),
-    ('Global recalibration', results['avg_calibrated'],       results['mse_calibrated']),
-    ('MCGrad',              results['avg_multicalibrated'],  results['mse_multicalibrated']),
+    ('Isotonic recalibration', results['avg_isotonic'],       results['mse_isotonic']),
+    ('MCGrad',              results['avg_mcgrad'],  results['mse_mcgrad']),
 ]
 
 header = f"{'Method':<22}" + "".join(f"{'|Bias|':>10}" for _, _ in bins)
