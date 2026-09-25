@@ -31,8 +31,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
+from lightgbm import LGBMClassifier
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from mcgrad import methods as mcgrad_methods
 
 # Ensure helpers is importable regardless of cwd
@@ -153,26 +153,27 @@ src_prev = calibration_df[LABEL_COLUMN].mean()
 # ============================================================
 # IPW estimator
 # ============================================================
-def ipw_estimate(cal_df, target_df, max_cal_samples=50_000):
-    """Inverse probability weighting prevalence estimate."""
-    if len(cal_df) > max_cal_samples:
-        cal_sub = cal_df.sample(n=max_cal_samples, random_state=42)
-    else:
-        cal_sub = cal_df
-    combined = pd.concat([
-        cal_sub[ALL_FEATURE_COLS].assign(_t=0),
-        target_df[ALL_FEATURE_COLS].assign(_t=1),
-    ], ignore_index=True)
-    X = pd.get_dummies(
-        combined[ALL_FEATURE_COLS], columns=CATEGORICAL_COLUMNS, drop_first=True
-    ).values.astype(float)
-    z = combined['_t'].values
-    clf = LogisticRegression(max_iter=1000, random_state=42)
-    clf.fit(X, z)
-    n = len(cal_sub)
-    p = clf.predict_proba(X[:n])[:, 1]
+def ipw_estimate(cal_df, target_df):
+    """Inverse probability weighting prevalence estimate.
+
+    The calibration-vs-target propensity is a default LightGBM classifier on
+    the same features MCGrad uses, cross-fitted over 5 folds so each weight
+    comes from a model that did not see that row.
+    """
+    features = ALL_FEATURE_COLS
+    X = pd.concat([cal_df[features], target_df[features]], ignore_index=True)
+    for c in CATEGORICAL_COLUMNS + BINARY_COLUMNS:
+        X[c] = X[c].astype(str).astype('category')
+    z = np.r_[np.zeros(len(cal_df)), np.ones(len(target_df))]
+    p = np.zeros(len(X))
+    folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    for train_idx, test_idx in folds.split(X, z):
+        clf = LGBMClassifier(random_state=42, verbose=-1)
+        clf.fit(X.iloc[train_idx], z[train_idx])
+        p[test_idx] = clf.predict_proba(X.iloc[test_idx])[:, 1]
+    p = p[:len(cal_df)]
     w = p / np.maximum(1 - p, 1e-10)
-    return np.clip(np.average(cal_sub[LABEL_COLUMN].values, weights=w), 0, 1)
+    return np.clip(np.average(cal_df[LABEL_COLUMN].values, weights=w), 0, 1)
 
 
 # ============================================================

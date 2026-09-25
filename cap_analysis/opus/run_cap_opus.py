@@ -31,8 +31,8 @@ import numpy as np
 import pandas as pd
 
 np.random.seed(42)
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from lightgbm import LGBMClassifier
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from mcgrad import methods as mcgrad_methods
 
 # Resolve paths relative to this file so the script runs from any cwd.
@@ -164,19 +164,25 @@ cal_fpr = ((cal_preds == 1) & (cal_labels == 0)).sum() / (1 - cal_labels).sum()
 src_prev = cal_df['law_crime'].mean()
 
 
-def ipw_estimate(cal, target, features=('country', 'doc_type', 'decade', 'text_len')):
-    """Inverse probability weighting prevalence estimate."""
-    features = list(features)
-    combined = pd.concat([
-        cal[features].assign(_t=0),
-        target[features].assign(_t=1),
-    ], ignore_index=True)
-    X = pd.get_dummies(combined[features], drop_first=True).values.astype(float)
-    z = combined['_t'].values
-    clf = LogisticRegression(max_iter=1000, random_state=42)
-    clf.fit(X, z)
-    n = len(cal)
-    p = clf.predict_proba(X[:n])[:, 1]
+def ipw_estimate(cal, target):
+    """Inverse probability weighting prevalence estimate.
+
+    The calibration-vs-target propensity is a default LightGBM classifier on
+    the same features MCGrad uses, cross-fitted over 5 folds so each weight
+    comes from a model that did not see that row.
+    """
+    features = CAT_PYN + NUM
+    X = pd.concat([cal[features], target[features]], ignore_index=True)
+    for c in CAT_PYN:
+        X[c] = X[c].astype(str).astype('category')
+    z = np.r_[np.zeros(len(cal)), np.ones(len(target))]
+    p = np.zeros(len(X))
+    folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    for train_idx, test_idx in folds.split(X, z):
+        clf = LGBMClassifier(random_state=42, verbose=-1)
+        clf.fit(X.iloc[train_idx], z[train_idx])
+        p[test_idx] = clf.predict_proba(X.iloc[test_idx])[:, 1]
+    p = p[:len(cal)]
     w = p / np.maximum(1 - p, 1e-10)
     return np.clip(np.average(cal['law_crime'].values, weights=w), 0, 1)
 

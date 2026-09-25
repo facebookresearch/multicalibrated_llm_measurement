@@ -93,7 +93,7 @@ Multicalibration remains the more useful practical target. It also controls cali
 
 **Simulation.** The data-generating process is given in the main text: $X\sim\text{Bernoulli}(1-P(X=0))$, $U\sim N(0,1)$ independent of $X$, $P(Y=1\mid X,U)=\sigma(a_X+bU)$ with $a_0=-2$, $a_1=1.5$, $b=1.5$, and classifier score $h=\sigma(a_X+bU+\delta_X)$ with $\delta_0=0.8$, $\delta_1=0$. Each of the 50 runs draws a fresh calibration sample of $n=10{,}000$ at $P(X=0)=0.5$, fits every estimator once, and evaluates bias and RMSE on 20 fresh unlabeled targets of $n=10{,}000$ with $P(X=0)$ evenly spaced in $[0.01,0.99]$. Bias is relative to each target sample's realized prevalence. MCGrad uses $X$ as its single categorical feature with default hyperparameters. Definitions of all seven methods are in Section S1.
 
-**Comparative Agendas Project.** The two campaigns (binary Yes/No and direct probability elicitation) were run separately to avoid anchoring. Benchmark implementations: Rogan-Gladen uses TPR/FPR estimated on the calibration set; IPW estimates density ratios by logistic regression on country, document type, decade, and length; isotonic regression is fit on the scores. Per-scenario bias is in Table S2; the ReadMe comparison is in Section S7 and the Llama 3.3 70B replication in Section S2.
+**Comparative Agendas Project.** The two campaigns (binary Yes/No and direct probability elicitation) were run separately to avoid anchoring. Benchmark implementations: Rogan-Gladen uses TPR/FPR estimated on the calibration set; IPW estimates the calibration-vs-target propensity with a default LightGBM classifier, the learner underlying MCGrad, on the same features MCGrad uses (country, document type, party, decade, and length), cross-fitted over five folds; isotonic regression is fit on the scores. Per-scenario bias is in Table S2; the ReadMe comparison is in Section S7 and the Llama 3.3 70B replication in Section S2.
 
 **American Community Survey.** Training states are TX, MI, PA, OH, IL, GA, NC, VA (2016--2018); held-out test states are CA, NY, FL, WA, AZ, CO, with in-distribution test $n\approx 920{,}000$. Age-shifted targets are produced by importance-weighted resampling, and RMSE by a 200-iteration bootstrap. Post-hoc calibration uses isotonic regression and MCGrad with categorical and numerical features.
 
@@ -118,12 +118,12 @@ Table S3 shows prevalence estimation bias using Llama 3.3 70B with verbalized co
 | Scenario | Shift Type | True Prev. | CC | RG | IPW | Iso. | MCGrad |
 |---|---|---|---|---|---|---|---|
 | Baseline | None | 8.1% | +14.7 | +0.6 | +0.1 | +0.2 | +0.2 |
-| Country shift | Within-cal. | 8.7% | +15.6 | +2.2 | -0.3 | +1.3 | +0.1 |
+| Country shift | Within-cal. | 8.7% | +15.6 | +2.2 | -0.2 | +1.3 | +0.1 |
 | Doc-type shift | Within-cal. | 6.5% | +16.0 | +1.7 | +0.0 | +0.7 | +0.1 |
-| Spain media | OOD doc type | 19.3% | +15.4 | +6.6 | -9.8 | -7.2 | -4.9 |
-| Belgium TV | OOD doc type | 11.1% | +13.3 | -0.0 | -3.5 | -1.6 | -3.4 |
+| Spain media | OOD doc type | 19.3% | +15.4 | +6.6 | -11.1 | -7.2 | -4.9 |
+| Belgium TV | OOD doc type | 11.1% | +13.3 | -0.0 | -2.6 | -1.6 | -3.4 |
 
-*Table S3: Prevalence estimation bias (pp) for Law & Crime topic using Llama 3.3 70B with verbalized confidence scores. CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted estimation, Iso. = isotonic regression.*
+*Table S3: Prevalence estimation bias (pp) for Law & Crime topic using Llama 3.3 70B with verbalized confidence scores. CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted estimation (cross-fitted gradient-boosted propensity model on country, document type, party, and decade), Iso. = isotonic regression.*
 
 The pattern is consistent with the main text's Claude Opus results: MCGrad achieves near-zero bias within the calibration distribution ($\leq 0.2$pp) and degrades on OOD populations (-3.4 to -4.9pp). Several differences are notable:
 
@@ -147,36 +147,38 @@ As a check with exact ground truth, we estimate employment prevalence from Ameri
 
 ![](images/figure_acs_v5.png){width=100%}
 
-*Figure S4. Absolute prevalence bias (percentage points) for the ACS employment benchmark, by method and age-shift scenario, for in-distribution (left) and out-of-distribution (right) states. Marker shape denotes the synthetic age distribution; horizontal lines are per-method means. MCGrad is near-unbiased across all in-distribution scenarios (including the bimodal shift that defeats IPW) and degrades only modestly out of distribution; Rogan-Gladen and isotonic regression grow with the age shift.*
+*Figure S4. Absolute prevalence bias (percentage points) for the ACS employment benchmark, by method and age-shift scenario, for in-distribution (left) and out-of-distribution (right) states. Marker shape denotes the synthetic age distribution; horizontal lines are per-method means. MCGrad is near-unbiased across all in-distribution scenarios and degrades only modestly out of distribution; Rogan-Gladen and isotonic regression grow with the age shift, and IPW collapses on two targets where its weights degenerate.*
 
-The pattern matches the simulation and CAP results (Figure S4; full numbers in Table S1). Rogan-Gladen fails by 12--19pp and SLD comparably; Classify \& Count and isotonic regression show moderate but growing bias (up to 8pp); IPW is good on simple shifts ($\le 1.2$pp) but fails on the bimodal shift (+4.7pp in-distribution, +6.3pp out-of-distribution) where the density ratio is hard to model. Multicalibration achieves $\le 0.27$pp bias across all in-distribution scenarios, including the bimodal shift, and degrades only modestly out of distribution (0.88--1.35pp), reflecting geographic shift along a dimension the calibration set did not span. Across both applications the story is consistent: multicalibration is near-unbiased when the target's features lie within the calibration support and degrades predictably when they do not: the scope condition has visible, interpretable bite rather than silent failure.
+The pattern matches the simulation and CAP results (Figure S4; full numbers in Table S1). Rogan-Gladen fails by 12--19pp and SLD comparably; Classify \& Count and isotonic regression show moderate but growing bias (up to 8pp); IPW is accurate on six of eight targets ($\le 0.4$pp in-distribution, $\le 2.8$pp out-of-distribution) but collapses on the in-distribution young-skewed ($-10.1$pp) and out-of-distribution old-skewed ($-15.5$pp) targets. Multicalibration achieves $\le 0.27$pp bias across all in-distribution scenarios, including the bimodal shift, and degrades only modestly out of distribution (0.88--1.35pp), reflecting geographic shift along a dimension the calibration set did not span. Across both applications the story is consistent: multicalibration is near-unbiased when the target's features lie within the calibration support and degrades predictably when they do not: the scope condition has visible, interpretable bite rather than silent failure.
+
+**Why IPW collapses.** IPW and MCGrad use the same learner (gradient-boosted trees, default settings, no tuning). For IPW it estimates the propensity that an observation belongs to the target rather than the calibration set; the weights are the odds $p/(1-p)$, cross-fitted over five folds. The calibration set ($n\approx 644{,}000$) is about thirty times larger than each target ($n=20{,}000$), so the propensities are small on average, and a few calibration observations placed in near-pure target leaves receive odds thousands of times the mean. On the two failing targets the effective sample size of the weights, $(\sum w)^2/\sum w^2$, falls to 518 (young-skewed) and 2 (out-of-distribution old-skewed), and the estimate is effectively the label of a handful of respondents. The failure is not a stable bias: with a different random seed the same two targets give $-6.6$pp and $+34.0$pp, and subsampling the calibration set to 20,000--50,000 or enforcing larger leaves restores accuracy ($\le 0.3$pp in-distribution). IPW can therefore match multicalibration within support, but only with per-target monitoring of the weights and tuning when they degenerate. MCGrad needs neither, because it adjusts predictions bounded in $[0,1]$ and averages them over every target observation, so no small set of observations can dominate the estimate, and its boosting rounds are chosen by cross-validated early stopping on the calibration data.
 
 ### Table S1: ACS Employment Prevalence Estimation Bias
 
 | Setting | Age Dist.    | True Prev. | Raw   | CC    | RG      | PACC    | SLD     | IPW   | Iso.  | MCGrad |
 |---------|--------------|------------|-------|-------|---------|---------|---------|-------|-------|--------|
-| In-Dist | Original     | 46.0%      | -0.31 | -0.07 | +0.26   | -0.07   | +0.01   | -0.3  | -0.30 | -0.27  |
-| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -12.82  | -0.3  | +2.04 | -0.11  |
-| In-Dist | Old-skewed   | 16.8%      | +7.23 | -6.62 | -16.77  | -16.77  | -16.76  | -1.2  | +6.65 | +0.22  |
-| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.79  | +4.7  | +4.33 | +0.12  |
-| OOD     | Original     | 45.1%      | +1.15 | +1.40 | +2.12   | +2.13   | +2.25   | +1.7  | +1.17 | +1.35  |
-| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -12.39  | +0.8  | +3.08 | +0.88  |
-| OOD     | Old-skewed   | 16.0%      | +8.47 | -5.64 | -15.97  | -15.97  | -15.97  | +0.1  | +7.91 | +1.01  |
-| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.63  | +6.3  | +5.69 | +1.13  |
+| In-Dist | Original     | 46.0%      | -0.31 | -0.07 | +0.26   | -0.07   | +0.01   | -0.38  | -0.30 | -0.27  |
+| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -12.82  | -10.12 | +2.04 | -0.11  |
+| In-Dist | Old-skewed   | 16.8%      | +7.23 | -6.62 | -16.77  | -16.77  | -16.76  | +0.24  | +6.65 | +0.22  |
+| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.79  | +0.35  | +4.33 | +0.12  |
+| OOD     | Original     | 45.1%      | +1.15 | +1.40 | +2.12   | +2.13   | +2.25   | +1.38  | +1.17 | +1.35  |
+| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -12.39  | -2.80  | +3.08 | +0.88  |
+| OOD     | Old-skewed   | 16.0%      | +8.47 | -5.64 | -15.97  | -15.97  | -15.97  | -15.45 | +7.91 | +1.01  |
+| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.63  | +1.39  | +5.69 | +1.13  |
 
-*Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift. Raw = uncalibrated averaging, CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted prevalence estimation, Iso. = Isotonic regression. Bootstrap RMSE (200 iterations) closely tracks absolute bias in all scenarios.*
+*Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift. Raw = uncalibrated averaging, CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted prevalence estimation (cross-fitted default LightGBM propensity model on all 16 features), Iso. = Isotonic regression. Bootstrap RMSE (200 iterations) closely tracks absolute bias in all scenarios.*
 
 ### Table S2: CAP Law & Crime Prevalence Estimation Bias (Claude Opus 4.6)
 
 | Scenario | Shift Type | True Prev. | CC | RG | SLD | IPW | Iso. | MC (binary) | MC (scores) |
 |---|---|---|---|---|---|---|---|---|---|
-| Baseline | None | 7.9% | +2.2 | +0.5 | +0.1 | +0.1 | +0.1 | +0.1 | +0.2 |
+| Baseline | None | 7.9% | +2.2 | +0.5 | +0.1 | +0.2 | +0.1 | +0.1 | +0.2 |
 | Country shift | Within-cal. | 8.4% | +3.3 | +1.7 | +1.4 | +0.1 | +0.9 | +0.4 | +0.4 |
-| Doc-type shift | Within-cal. | 6.3% | +1.6 | -0.3 | -0.6 | +0.1 | +0.0 | -0.0 | +0.1 |
-| Spain media | OOD doc type | 19.5% | +3.6 | +3.1 | +3.8 | -12.2 | -2.5 | -1.9 | -4.5 |
-| Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | +4.7 | -4.5 | +2.6 | +0.7 | +1.6 |
+| Doc-type shift | Within-cal. | 6.3% | +1.6 | -0.3 | -0.6 | +0.2 | +0.0 | -0.0 | +0.1 |
+| Spain media | OOD doc type | 19.5% | +3.6 | +3.1 | +3.8 | -11.9 | -2.5 | -1.9 | -4.5 |
+| Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | +4.7 | -2.4 | +2.6 | +0.7 | +1.6 |
 
-*CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; SLD = Saerens-Latinne-Decaestecker (label shift, applied to isotonic-recalibrated probability scores); IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
+*CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; SLD = Saerens-Latinne-Decaestecker (label shift, applied to isotonic-recalibrated probability scores); IPW = importance-weighted estimation (target-specific density ratio from a cross-fitted gradient-boosted propensity model); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
 
 ## S4. Simulation: RMSE
 

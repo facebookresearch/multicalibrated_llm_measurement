@@ -29,9 +29,9 @@ logging.getLogger('mcgrad').setLevel(logging.WARNING)
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
+from lightgbm import LGBMClassifier
 from sklearn.metrics import roc_auc_score, roc_curve
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from mcgrad import methods as mcgrad_methods
 
 np.random.seed(42)
@@ -52,7 +52,6 @@ SUBPOP_MAP = {
 CAL_SUBPOPS = ['denmark_questions', 'spain_questions', 'us_bills', 'belgium_newspaper']
 CAT_FEATS = ['doc_type', 'country', 'party']
 NUM_FEATS = ['decade']
-IPW_FEATS = ['country', 'doc_type', 'decade']
 N_TARGET = 20_000
 
 # ============================================================
@@ -156,19 +155,26 @@ def sld_estimate(scores, source_prevalence, max_iter=100, tol=1e-6):
 
 
 def ipw_estimate(cal, target):
-    """Inverse-probability-weighted prevalence estimate."""
-    combined = pd.concat([
-        cal[IPW_FEATS].assign(_t=0),
-        target[IPW_FEATS].assign(_t=1),
-    ], ignore_index=True)
-    X = pd.get_dummies(combined[IPW_FEATS], drop_first=True).values.astype(float)
-    z = combined['_t'].values
-    clf = LogisticRegression(max_iter=1000, random_state=42)
-    clf.fit(X, z)
-    n = len(cal)
-    p = clf.predict_proba(X[:n])[:, 1]
-    weights = p / np.maximum(1 - p, 1e-10)
-    return np.clip(np.average(cal[LABEL].values, weights=weights), 0, 1)
+    """Inverse probability weighting prevalence estimate.
+
+    The calibration-vs-target propensity is a default LightGBM classifier on
+    the same features MCGrad uses, cross-fitted over 5 folds so each weight
+    comes from a model that did not see that row.
+    """
+    features = CAT_FEATS + NUM_FEATS
+    X = pd.concat([cal[features], target[features]], ignore_index=True)
+    for c in CAT_FEATS:
+        X[c] = X[c].astype(str).astype('category')
+    z = np.r_[np.zeros(len(cal)), np.ones(len(target))]
+    p = np.zeros(len(X))
+    folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    for train_idx, test_idx in folds.split(X, z):
+        clf = LGBMClassifier(random_state=42, verbose=-1)
+        clf.fit(X.iloc[train_idx], z[train_idx])
+        p[test_idx] = clf.predict_proba(X.iloc[test_idx])[:, 1]
+    p = p[:len(cal)]
+    w = p / np.maximum(1 - p, 1e-10)
+    return np.clip(np.average(cal[LABEL].values, weights=w), 0, 1)
 
 
 # ============================================================
