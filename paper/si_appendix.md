@@ -226,7 +226,30 @@ The two implementations differ in magnitude, and on the document-type shift even
 
 ReadMe2 [@jerzakkingstrezhnev2023improved] refines the feature summary (word-vector "vector summaries" and a learned matched projection) but still infers proportions from category-conditional feature summaries estimated on the labeled set; whether its identifying restriction holds under the covariate shift studied here has not been established. We installed and ran the official ReadMe2 estimator; a faithful evaluation requires its `undergrad` vector-summary features, and when supplied instead with multilingual-BERT document embeddings the estimator was biased by roughly +20pp even at the no-shift baseline, mis-specified for that feature representation and the rare (~8%) positive class, so we do not report it as a fair head-to-head comparison. The defensible empirical statement is the classic-ReadMe result in Table S4.
 
-## S8. Disclosure of Generative-AI Use
+## S8. Calibration Diagnostics
+
+Table S5 reports calibration before and after MCGrad for every analysis, on held-out data only: the in-distribution test split and, for ACS and CAP, the out-of-distribution sets. ECCE is the estimated cumulative calibration error of @arrieta2022metrics, the range of the running sum of label-minus-score differences over observations sorted by score; we report it in percentage points and in units of its standard deviation under perfect calibration ($\sigma$). MCE [@guy2025measuring] is the largest ECCE $\sigma$ over subgroups formed from the features MCGrad uses, up to three-way intersections (default `mcgrad.metrics` settings); its absolute value rescales that maximum by the global standard deviation. The pre-calibration score is the classifier or LLM score, except for CAP Opus binary, where MCGrad's input is the constant calibration base rate and the LLM label enters as a feature. For that variant the pre-calibration global ECCE only reflects arbitrary ordering among tied scores (and, out of distribution, the shift in prevalence), while its MCE reflects the ignored label.
+
+Within the calibration distribution, MCGrad brings global ECCE to 1.0--2.0$\sigma$ in every analysis, consistent with perfect calibration, and the worst subgroup to at most 0.71pp. The ACS in-distribution MCE of 6.2$\sigma$ corresponds to 0.22pp and is detectable only because the test set has about 920,000 observations. Out of distribution, calibration degrades in line with the prevalence bias in Tables S1--S3. Because the running sum ends at the mean label-minus-score difference, ECCE bounds the absolute bias of the averaged prediction, and the post-calibration ECCE on the out-of-distribution sets (1.46--5.09pp) is close to the corresponding MCGrad bias. For Opus scores on Spain media, MCGrad makes global calibration worse (1.74 to 4.57pp).
+
+| Analysis | Evaluation set | ECCE (pp) | ECCE $\sigma$ | MCE (pp) | MCE $\sigma$ |
+|---|---|---|---|---|---|
+| Simulation | In-dist. test | 5.78 → 0.71 | 15.1 → 2.0 | 7.67 → 0.71 | 20.1 → 2.0 |
+| ACS | In-dist. test | 0.85 → 0.06 | 22.0 → 1.7 | 3.46 → 0.22 | 89.2 → 6.2 |
+| ACS | OOD states | 1.25 → 1.46 | 57.0 → 71.8 | 3.75 → 1.47 | 170.8 → 72.2 |
+| Opus, binary | In-dist. test | 0.93 → 0.19 | 2.8 → 1.0 | 21.34 → 0.67 | 63.5 → 3.6 |
+| Opus, binary | Spain media | 11.41 → 2.48 | 29.6 → 8.0 | 30.84 → 8.34 | 80.1 → 27.0 |
+| Opus, binary | Belgium TV | 3.08 → 0.75 | 8.0 → 2.8 | 23.68 → 0.93 | 61.5 → 3.4 |
+| Opus, scores | In-dist. test | 3.34 → 0.30 | 12.4 → 1.7 | 3.34 → 0.57 | 12.4 → 3.3 |
+| Opus, scores | Spain media | 1.74 → 4.57 | 4.4 → 14.3 | 1.91 → 4.57 | 4.9 → 14.3 |
+| Opus, scores | Belgium TV | 5.45 → 1.78 | 17.2 → 7.3 | 5.45 → 1.78 | 17.2 → 7.3 |
+| Llama, scores | In-dist. test | 18.10 → 0.22 | 88.0 → 1.4 | 18.10 → 0.46 | 88.0 → 3.0 |
+| Llama, scores | Spain media | 16.17 → 5.09 | 93.7 → 32.2 | 16.17 → 5.09 | 93.7 → 32.2 |
+| Llama, scores | Belgium TV | 14.04 → 3.44 | 68.8 → 18.4 | 14.04 → 3.44 | 68.8 → 18.4 |
+
+*Table S5: Calibration before → after MCGrad on held-out data; Opus and Llama rows are the CAP analyses. ECCE = estimated cumulative calibration error [@arrieta2022metrics]; MCE = multicalibration error, the maximum ECCE over feature-defined subgroups [@guy2025measuring]; pp = percentage points; $\sigma$ = standard deviations under perfect calibration. Simulation: one calibration and one evaluation sample of 10,000 at $P(X=0)=0.5$, subgroups on $X$. ACS subgroups on all 16 features; CAP subgroups on country, document type, party, decade, and (Opus) text length, plus the LLM label for the binary variant. Produced by the run scripts (`paper/images/*_calibration.json`).*
+
+## S9. Disclosure of Generative-AI Use
 
 The authors disclose the use of generative AI in the research and writing process. Under the GAIDeT taxonomy [@suchikova2025gaidet], the following tasks were delegated to GAI tools under full human supervision: literature search and systematization, code generation and optimization, data collection and cleaning, data analysis, visualization, reproducibility testing, text generation, proofreading and editing, reformatting, and identification of limitations. The GAI tools used were Claude Opus 4.6, Claude Opus 4.7, and Gemini 3 Pro. Note that Claude Opus 4.6 is also the measurement device under study in the main CAP application; its role there is as an object of analysis, not as a research assistant. No task was performed exclusively by AI; all outputs were verified and iterated on by the authors, who bear sole responsibility for the manuscript. GAI tools are not authors. Declaration submitted by: Fridolin Linder.
 

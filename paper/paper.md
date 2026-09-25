@@ -88,7 +88,7 @@ This research was conducted as part of the authors' employment at Meta Platforms
 
 # Acknowledgements {.unnumbered}
 
-The authors used Claude Opus 4.6, Claude Opus 4.7, and Gemini 3 Pro to assist with literature search, code, data analysis, visualization, and drafting and editing of the manuscript; the full declaration is in SI Section S8. The authors are entirely responsible for the scientific content of the paper, which adheres to the journal's authorship policy.
+The authors used Claude Opus 4.6, Claude Opus 4.7, and Gemini 3 Pro to assist with literature search, code, data analysis, visualization, and drafting and editing of the manuscript; the full declaration is in SI Section S9. The authors are entirely responsible for the scientific content of the paper, which adheres to the journal's authorship policy.
 
 # Competing Interests {.unnumbered}
 
