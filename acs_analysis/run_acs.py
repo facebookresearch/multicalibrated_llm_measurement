@@ -176,6 +176,22 @@ def ipw_estimate(cal_df, target_df, max_cal_samples=50_000):
 
 
 # ============================================================
+# SLD estimator (reported in SI Table S1, not in Figure 2)
+# ============================================================
+def sld_estimate(scores, source_prevalence, max_iter=1000, tol=1e-8):
+    """Saerens-Latinne-Decaestecker (EMQ) prevalence estimator."""
+    p_hat = source_prevalence
+    for _ in range(max_iter):
+        rp = p_hat / source_prevalence
+        rn = (1 - p_hat) / (1 - source_prevalence)
+        p_new = ((rp * scores) / (rp * scores + rn * (1 - scores))).mean()
+        if abs(p_new - p_hat) < tol:
+            break
+        p_hat = p_new
+    return p_hat
+
+
+# ============================================================
 # Bias computation for each method
 # ============================================================
 def compute_bias(target, method_name):
@@ -340,6 +356,18 @@ for setting_name, biases_dict in [("IN-DISTRIBUTION", within_biases),
             row += f"{b:>13.2f}pp"
         row += f"{np.mean(biases):>9.2f}pp"
         print(row)
+
+# SLD assumes calibrated source posteriors, so it runs on the
+# isotonic-recalibrated scores. Signed bias, as in SI Table S1.
+print("\nSLD (EMQ) on isotonic-recalibrated scores, signed bias:")
+for setting_name, scenario_list in [("IN-DISTRIBUTION", within_cal_scenarios),
+                                    ("OUT-OF-DISTRIBUTION", ood_scenarios)]:
+    row = f"  {setting_name:<20}"
+    for sc_name, sample_fn, _ in scenario_list:
+        target = sample_fn(rs=42)
+        sld = sld_estimate(target[IR_COL].values, src_prev)
+        row += f"{(sld - target[LABEL_COLUMN].mean()) * 100:>+13.2f}pp"
+    print(row)
 
 print()
 print("Done. Figure saved to paper/images/figure_acs_v5.png")

@@ -214,7 +214,9 @@ for name, target in scenarios.items():
         rg = float(np.clip((cc - cal_fpr) / denom, 0, 1))
     else:
         rg = float(cc)
-    sld = sld_estimate(target['llm_score'].values, src_prev)
+    # SLD assumes calibrated source posteriors, so it runs on the
+    # isotonic-recalibrated scores rather than the raw verbalized ones.
+    sld = sld_estimate(target['iso_pred'].values, src_prev)
     ipw = ipw_estimate(cal_df, target)
     iso = target['iso_pred'].mean()
     mc = target['mc_pred'].mean()

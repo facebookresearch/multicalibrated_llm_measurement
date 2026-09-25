@@ -262,7 +262,7 @@ for name, target in scenarios.items():
     iso = target['iso_pred'].mean()
     mcb = target['mc_bin'].mean()
     mcp = target['mc_pyn'].mean()
-    sld = sld_estimate(target['pyn_score'].values, src_prev)
+    sld = sld_estimate(target['iso_pred'].values, src_prev)
     rm_mean, rm_std = readme_estimate(target['text'].values, n_feat=15, n_runs=300, seed=0)
     readme_cache[name] = (rm_mean, rm_std)
     rows.append({

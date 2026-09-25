@@ -235,7 +235,9 @@ for name, target in scenarios.items():
     iso = target['iso_pred'].mean()
     mcb = target['mc_bin'].mean()
     mcp = target['mc_pyn'].mean()
-    sld = sld_estimate(target['pyn_score'].values, src_prev)
+    # SLD assumes calibrated source posteriors, so it runs on the
+    # isotonic-recalibrated scores rather than the raw elicited ones.
+    sld = sld_estimate(target['iso_pred'].values, src_prev)
 
     all_results[name] = {
         'True Prevalence': tp,

@@ -106,14 +106,17 @@ def estimate_prevalences(target, fitted):
     """Apply every estimator, with parameters fixed from calibration, to an unlabeled target."""
     scores = target["score"].values
     cc = (scores >= fitted["cc_threshold"]).mean()
+    # SLD assumes calibrated source posteriors, so it runs on the
+    # isotonic-recalibrated scores.
+    iso_scores = fitted["isotonic"].predict(target, "score")
 
     return {
         "uncalibrated": scores.mean(),
         "cc": cc,
         "rg": apply_rogan_gladen(cc, fitted["rg_tpr"], fitted["rg_fpr"]),
         "pacc": pacc_estimate(scores, fitted["pacc_pos_mean"], fitted["pacc_neg_mean"]),
-        "sld": sld_estimate(scores, fitted["source_prevalence"]),
-        "isotonic": fitted["isotonic"].predict(target, "score").mean(),
+        "sld": sld_estimate(iso_scores, fitted["source_prevalence"]),
+        "isotonic": iso_scores.mean(),
         "mcgrad": fitted["mcgrad"]
         .predict(target, "score", categorical_feature_column_names=["X"])
         .mean(),

@@ -51,6 +51,8 @@ $$\tilde{h}_i^{(t)} = \frac{(\hat{\pi}^{(t)} / \pi_s) \cdot h(X_i^*)}{(\hat{\pi}
 3. M-step: $\hat{\pi}^{(t+1)} = \frac{1}{n}\sum_i \tilde{h}_i^{(t)}$
 4. Repeat until convergence [@saerens2002adjusting].
 
+SLD requires $h$ to be a calibrated posterior in the source population. We therefore run it on the isotonic-recalibrated scores $m(h(X))$ of S1.6, not on the raw scores, in the simulation and in all applications; on raw scores its bias would conflate miscalibration with the failure of the label-shift assumption.
+
 ### S1.6 Global Calibration
 
 Global calibration fits a monotone map $m$ from scores to probabilities by isotonic regression of $Y$ on $h(X)$ in the calibration data, and estimates $\hat{\pi}_{\text{iso}} = \frac{1}{n}\sum_i m(h(X_i^*))$. The same estimator is used in the simulation and in both applications. Because $m$ depends on the score alone, it is calibrated at the calibration sample's feature mix but not within feature-defined groups whose scores overlap.
@@ -137,7 +139,7 @@ Verbalized confidence elicitation partially addresses both problems by producing
 
 ### S2.5 Additional Baselines: SLD and PACC on Llama Scores
 
-The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, diverges catastrophically on Llama's verbalized confidence scores, producing prevalence estimates biased by +33 to +60pp. This occurs because the verbalized scores are not calibrated posteriors, violating SLD's core assumption. PACC shows moderate bias (+0.6 to +5.9pp within calibration, +2.4 to +5.9pp OOD). Full results including SLD and PACC are available in the replication code.
+The SLD (EMQ) algorithm, designed for label shift rather than covariate shift, is run on the isotonic-recalibrated Llama scores (S1.5). It is accurate at baseline (+0.6pp) but biased under the within-calibration shifts (+5.4pp for the country shift, $-1.4$pp for the doc-type shift) and out of support (+3.0pp on Spanish media, +1.4pp on Belgian TV). PACC shows moderate bias (+0.6 to +5.9pp within calibration, +2.4 to +5.9pp OOD). Full results including SLD and PACC are available in the replication code.
 
 ## S3. Empirical results: ACS employment benchmark and detailed tables
 
@@ -154,13 +156,13 @@ The pattern matches the simulation and CAP results (Figure S4; full numbers in T
 | Setting | Age Dist.    | True Prev. | Raw   | CC    | RG      | PACC    | SLD     | IPW   | Iso.  | MCGrad |
 |---------|--------------|------------|-------|-------|---------|---------|---------|-------|-------|--------|
 | In-Dist | Original     | 46.0%      | -0.31 | -0.07 | +0.26   | -0.07   | +0.01   | -0.3  | -0.30 | -0.27  |
-| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -11.95  | -0.3  | +2.04 | -0.11  |
+| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -12.82  | -0.3  | +2.04 | -0.11  |
 | In-Dist | Old-skewed   | 16.8%      | +7.23 | -6.62 | -16.77  | -16.77  | -16.76  | -1.2  | +6.65 | +0.22  |
-| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.14  | +4.7  | +4.33 | +0.12  |
+| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.79  | +4.7  | +4.33 | +0.12  |
 | OOD     | Original     | 45.1%      | +1.15 | +1.40 | +2.12   | +2.13   | +2.25   | +1.7  | +1.17 | +1.35  |
-| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -11.38  | +0.8  | +3.08 | +0.88  |
+| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -12.39  | +0.8  | +3.08 | +0.88  |
 | OOD     | Old-skewed   | 16.0%      | +8.47 | -5.64 | -15.97  | -15.97  | -15.97  | +0.1  | +7.91 | +1.01  |
-| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.20  | +6.3  | +5.69 | +1.13  |
+| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.63  | +6.3  | +5.69 | +1.13  |
 
 *Prevalence estimation bias in percentage points (pp) under synthetic age distribution shift. Raw = uncalibrated averaging, CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted prevalence estimation, Iso. = Isotonic regression. Bootstrap RMSE (200 iterations) closely tracks absolute bias in all scenarios.*
 
@@ -168,13 +170,13 @@ The pattern matches the simulation and CAP results (Figure S4; full numbers in T
 
 | Scenario | Shift Type | True Prev. | CC | RG | SLD | IPW | Iso. | MC (binary) | MC (scores) |
 |---|---|---|---|---|---|---|---|---|---|
-| Baseline | None | 7.9% | +2.2 | +0.5 | +7.4 | +0.1 | +0.1 | +0.1 | +0.2 |
-| Country shift | Within-cal. | 8.4% | +3.3 | +1.7 | +9.5 | +0.1 | +0.9 | +0.4 | +0.4 |
-| Doc-type shift | Within-cal. | 6.3% | +1.6 | -0.3 | +4.9 | +0.1 | +0.0 | -0.0 | +0.1 |
-| Spain media | OOD doc type | 19.5% | +3.6 | +3.1 | +21.6 | -12.2 | -2.5 | -1.9 | -4.5 |
-| Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | +13.7 | -4.5 | +2.6 | +0.7 | +1.6 |
+| Baseline | None | 7.9% | +2.2 | +0.5 | +0.1 | +0.1 | +0.1 | +0.1 | +0.2 |
+| Country shift | Within-cal. | 8.4% | +3.3 | +1.7 | +1.4 | +0.1 | +0.9 | +0.4 | +0.4 |
+| Doc-type shift | Within-cal. | 6.3% | +1.6 | -0.3 | -0.6 | +0.1 | +0.0 | -0.0 | +0.1 |
+| Spain media | OOD doc type | 19.5% | +3.6 | +3.1 | +3.8 | -12.2 | -2.5 | -1.9 | -4.5 |
+| Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | +4.7 | -4.5 | +2.6 | +0.7 | +1.6 |
 
-*CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; SLD = Saerens-Latinne-Decaestecker (label shift, applied to probability scores); IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
+*CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; SLD = Saerens-Latinne-Decaestecker (label shift, applied to isotonic-recalibrated probability scores); IPW = importance-weighted estimation (target-specific density ratio); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
 
 ## S4. Simulation: RMSE
 
@@ -188,7 +190,7 @@ The main-text simulation (Figure 1) reports bias for the four estimators across 
 
 ![](images/figure_sim_lineplot_all.png){width=100%}
 
-*Figure S2: Simulation bias curves for all seven methods (uncalibrated averaging, Classify \& Count, Rogan-Gladen, PACC, SLD/EMQ, isotonic recalibration, MCGrad). Rogan-Gladen and PACC fail badly under shift: at the most extreme shift Rogan-Gladen passes $-100\%$ (a negative prevalence) and PACC, truncated to $[0,1]$, sits at the $-100\%$ floor. SLD is biased even at the calibration distribution, because the uncalibrated scores are not the posteriors its EM step assumes, and diverges under covariate shift. Isotonic recalibration is unbiased at the calibration distribution and drifts to about $+19\%$ at the most extreme shift. MCGrad stays within about 2\% throughout.*
+*Figure S2: Simulation bias curves for all seven methods (uncalibrated averaging, Classify \& Count, Rogan-Gladen, PACC, SLD/EMQ, isotonic recalibration, MCGrad). Rogan-Gladen and PACC fail badly under shift: at the most extreme shift Rogan-Gladen passes $-100\%$ (a negative prevalence) and PACC, truncated to $[0,1]$, sits at the $-100\%$ floor. SLD, run on isotonic-recalibrated scores, is unbiased at the calibration distribution but tracks Rogan-Gladen under shift (about $+32\%$ and $-98\%$ at the two extremes), because it attributes the change in the score distribution to a change in the class prior. Isotonic recalibration is unbiased at the calibration distribution and drifts to about $+19\%$ at the most extreme shift. MCGrad stays within about 2\% throughout.*
 
 ## S6. Claude Opus Score Distribution
 
