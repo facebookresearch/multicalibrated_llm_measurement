@@ -180,9 +180,11 @@ The pattern matches the simulation and CAP results (Figure S4; full numbers in T
 
 *CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; SLD = Saerens-Latinne-Decaestecker (label shift, applied to isotonic-recalibrated probability scores); IPW = importance-weighted estimation (target-specific density ratio from a cross-fitted gradient-boosted propensity model); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
 
-## S4. Simulation: RMSE
+## S4. Simulation: Design and RMSE
 
-The main-text simulation (Figure 1) reports bias for the four estimators across the shift gradient. Here we add the root mean squared error for the same four methods.
+**Design.** Each document has a binary feature $X\in\{0,1\}$ and a content signal $U\sim N(0,1)$ independent of $X$. The outcome follows $P(Y=1\mid X,U)=\sigma(a_X+1.5\,U)$ with $a_0=-2$ and $a_1=1.5$, so $P(Y=1\mid X=0)\approx0.19$ and $P(Y=1\mid X=1)\approx0.75$; this relationship is the same in every population, and only $P(X)$ shifts. The classifier's score is $\sigma(a_X+1.5\,U+\delta_X)$ with $\delta_0=0.8$ and $\delta_1=0$: it is calibrated for $X=1$ documents and overstates the probability for $X=0$ documents. Each run draws a labeled calibration sample of 10,000 documents at $P(X=0)=0.5$, fits every estimator once, and applies it to fresh unlabeled targets of 10,000 documents on a grid of 20 values of $P(X=0)$ between 0.01 and 0.99. We report averages over 50 runs (`simulation/helpers.py`).
+
+**RMSE.** The main-text simulation (Figure 1) reports bias for the four estimators across the shift gradient. Here we add the root mean squared error for the same four methods.
 
 ![](images/figure_sim_rmse.png){width=100%}
 
