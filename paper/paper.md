@@ -11,6 +11,7 @@ bibliography: references.bib
 csl: chicago-author-date.csl
 geometry: margin=1in
 fontsize: 11pt
+numbersections: true
 header-includes:
   - \usepackage{booktabs}
   - \usepackage{graphicx}
@@ -21,9 +22,13 @@ header-includes:
 
 ^1^Meta Platforms Inc., ^2^The London School of Economics and Political Science
 
-## Abstract
+Corresponding author: Fridolin Linder (flinder@meta.com)
+
+## Abstract {.unnumbered}
 
 Political scientists increasingly use classifiers, and now large language models (LLMs), to estimate how prevalent a concept is in a corpus, such as topics in legislative agendas or categories in open-ended survey responses. Standard validation reports discriminative metrics such as accuracy or the area under the ROC curve (AUC) on a labeled sample. This certifies neither valid prevalence estimates in the validated population nor transportability to new ones. Discriminative metrics are blind to the feature-conditional errors that bias a prevalence estimate, and existing corrections either assume label shift or must be re-estimated for every target. Building on @kim2022universal, we show that a *multicalibrated* classifier, one calibrated conditional on input features rather than only on average, yields unbiased prevalence estimates under any covariate shift along the calibrated features within their support, and needs to be fitted only once. We explain why standard quantification methods fail where multicalibration does not, and evaluate it in a simulation and two applications: an LLM coding policy topics across four countries and languages, and a logistic regression predicting employment from survey data. Multicalibration keeps bias below half a percentage point for shifts within the calibrated features, where standard corrections miss by up to 19 points, and degrades only modestly beyond them.
+
+**Keywords:** prevalence estimation, multicalibration, covariate shift, quantification, large language models, measurement validity
 
 # Introduction
 
@@ -41,9 +46,7 @@ The simplest model-based prevalence estimator just averages the model's outputs 
 
 Consider a binary outcome $Y \in \{0,1\}$, features $X$, and a predictor $h(X)\in[0,1]$. The estimand is the prevalence $\pi^*=P^*(Y=1)$ in a target population, estimated by averaging predictions over unlabeled target observations. We assume *covariate shift*: $P(X)$ may differ between source and target, while $P(Y\mid X)$ remains stable. We also require overlap: any region of the feature space that can occur in the target must also occur in the source. Covariate shift contrasts with *label shift*, which instead holds $P(X\mid Y)$ fixed while the prevalence of $Y$ changes.\footnote{The causal heuristic behind these invariance assumptions traces to @scholkopf2012causal; we rely on the invariance, not the causal direction.} Under concept drift, where $P(Y\mid X)$ changes, target prevalence cannot generally be recovered without target labels or additional identifying assumptions.
 
-Global calibration is sufficient for unbiased prevalence estimation in a given population. If $\mathbb{E}[Y\mid h(X)=p]=p$ for every prediction value $p$, then $\mathbb{E}[h(X)]=\mathbb{E}[Y]$. But global calibration in the source population need not survive a change in the distribution of $X$. To see why, partition the population into feature-defined groups $G$ with weights $w_G$, and let $\epsilon_G=\mathbb{E}[h(X)-Y\mid X\in G]$ be the mean signed error in group $G$. If the target changes only the relative sizes of these groups, its population prevalence error is
-$$\mathbb{E}^*[h(X)] - \pi^* = \sum_G w_G^*\, \epsilon_G.$$
-Global calibration in the source population requires only that the source-weighted errors cancel. When the group weights change, the same errors need not cancel in the target.
+Global calibration is sufficient for unbiased prevalence estimation in a given population. If $\mathbb{E}[Y\mid h(X)=p]=p$ for every prediction value $p$, then $\mathbb{E}[h(X)]=\mathbb{E}[Y]$. But global calibration in the source population need not survive a change in the distribution of $X$. To see why, partition the population into feature-defined groups $G$ with weights $w_G$, and let $\epsilon_G=\mathbb{E}[h(X)-Y\mid X\in G]$ be the mean signed error in group $G$. If the target changes only the relative sizes of these groups, its population prevalence error is $\mathbb{E}^*[h(X)] - \pi^* = \sum_G w_G^*\epsilon_G$. Global calibration in the source population requires only that the source-weighted errors cancel. When the group weights change, the same errors need not cancel in the target.
 
 Discriminative performance does not prevent this problem. AUC and other rank-based metrics are invariant to strictly increasing transformations of the scores, even though such transformations can substantially change prevalence estimates. Accuracy and $F_1$ are not rank-invariant, but they measure unsigned classification performance rather than the signed errors relevant to an aggregate proportion. A classifier can therefore perform well overall while making systematic errors in a group that is rare in the source and common in the target.
 
@@ -83,4 +86,20 @@ Prevalence estimation across populations is a common goal in political science r
 
 However, the guarantee has limits. It holds only along calibrated dimensions, so calibration data must span the anticipated variation. It also requires labeled calibration data, which in zero-shot settings reintroduces some hand-coding, though far less than per-document labeling and only once. Under mixtures the covariate-shift condition holds only approximately. Our applications have ground truth, so we can verify the estimates directly; a practitioner usually cannot, since the target's labels are what is missing.
 
-# References
+# Funding {.unnumbered}
+
+This research was conducted as part of the authors' employment at Meta Platforms, Inc. and received no specific external funding.
+
+# Acknowledgements {.unnumbered}
+
+The authors used Claude Opus 4.6, Claude Opus 4.7, and Gemini 3 Pro to assist with literature search, code, data analysis, visualization, and drafting and editing of the manuscript; the full declaration is in SI Section S8. The authors are entirely responsible for the scientific content of the paper, which adheres to the journal's authorship policy.
+
+# Competing Interests {.unnumbered}
+
+All authors are employees of Meta Platforms, Inc.; Milan Vojnovic is also affiliated with the London School of Economics and Political Science. Niek Tax, Lorenzo Perini, Fridolin Linder, Daniel Haimovich, and Milan Vojnovic are authors of MCGrad [@tax2026mcgrad], the open-source multicalibration method evaluated here. The authors declare no other competing interests.
+
+# Data Availability Statement {.unnumbered}
+
+Replication code and data will be deposited in the Political Analysis Dataverse and are available at <https://github.com/facebookresearch/multicalibrated_llm_measurement>. The analyses use the Comparative Agendas Project datasets [@capdata] and American Community Survey microdata [@census2018acspums], accessed through the folktables package [@ding2021retiring].
+
+# References {.unnumbered}
