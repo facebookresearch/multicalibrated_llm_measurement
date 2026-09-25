@@ -34,6 +34,7 @@ import matplotlib.pyplot as plt
 from lightgbm import LGBMClassifier
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from mcgrad import methods as mcgrad_methods
+from mcgrad.metrics import MulticalibrationError
 
 # Ensure helpers is importable regardless of cwd
 sys.path.insert(0, os.path.dirname(__file__))
@@ -332,6 +333,36 @@ _bias_dump = {
 _dump_path = os.path.join(IMG_DIR, 'acs_biases.json')
 with open(_dump_path, 'w') as _f:
     json.dump(_bias_dump, _f, indent=2)
+print(f"  Saved {_dump_path}")
+
+# ============================================================
+# Calibration metrics before and after MCGrad (SI)
+# ============================================================
+# Global ECCE and MCE on held-out data, with MCE segments built from the
+# same features MCGrad uses. Absolute values are in probability units.
+def calibration_metrics(df, score_col, label_col, categorical, numerical):
+    m = MulticalibrationError(
+        df, label_col, score_col,
+        categorical_segment_columns=categorical,
+        numerical_segment_columns=numerical,
+        precision_dtype='float64',
+    )
+    return {'ecce': float(m.global_ecce), 'ecce_sigma': float(m.global_ecce_sigma),
+            'mce': float(m.mce), 'mce_sigma': float(m.mce_sigma)}
+
+
+_calib = {
+    name: {
+        stage: calibration_metrics(
+            df, col, LABEL_COLUMN,
+            categorical_segment_features, numerical_segment_features)
+        for stage, col in [('pre', BASE_MODEL_COL), ('post', MCGRAD_COL)]
+    }
+    for name, df in [('In-distribution test', test_df), ('OOD states', ood_df)]
+}
+_dump_path = os.path.join(IMG_DIR, 'acs_calibration.json')
+with open(_dump_path, 'w') as _f:
+    json.dump(_calib, _f, indent=2)
 print(f"  Saved {_dump_path}")
 
 # ============================================================

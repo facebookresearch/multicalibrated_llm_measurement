@@ -15,6 +15,7 @@ Usage:
     conda run -n mcgrad_tutorials python3 simulation/run_simulation.py
 """
 
+import json
 import numpy as np
 import os
 import sys
@@ -25,7 +26,8 @@ import matplotlib.pyplot as plt
 
 # Ensure helpers is importable regardless of cwd
 sys.path.insert(0, os.path.dirname(__file__))
-from helpers import compute_bias_curves_bootstrap
+from helpers import compute_bias_curves_bootstrap, fit_estimators, generate_data
+from mcgrad.metrics import MulticalibrationError
 
 IMG_DIR = os.path.join(os.path.dirname(__file__), '..', 'paper', 'images')
 os.makedirs(IMG_DIR, exist_ok=True)
@@ -75,6 +77,29 @@ results = compute_bias_curves_bootstrap(
 )
 
 deltas = results['deltas']
+
+# ============================================================
+# Calibration metrics before and after MCGrad (SI)
+# ============================================================
+# Global ECCE and MCE on a fresh held-out sample from the calibration
+# distribution, with MCE segments on X. Absolute values are in probability units.
+_rng = np.random.default_rng(0)
+_calib_data = generate_data(N_CALIBRATION, P_X0, INTERCEPTS, SLOPE, SCORE_OFFSETS, _rng)
+_eval_data = generate_data(N_SAMPLES, P_X0, INTERCEPTS, SLOPE, SCORE_OFFSETS, _rng)
+_eval_data['mcgrad'] = fit_estimators(_calib_data)['mcgrad'].predict(
+    _eval_data, 'score', categorical_feature_column_names=['X'])
+_calib = {}
+for stage, col in [('pre', 'score'), ('post', 'mcgrad')]:
+    m = MulticalibrationError(
+        _eval_data, 'Y', col, categorical_segment_columns=['X'],
+        precision_dtype='float64',
+    )
+    _calib[stage] = {'ecce': float(m.global_ecce), 'ecce_sigma': float(m.global_ecce_sigma),
+                     'mce': float(m.mce), 'mce_sigma': float(m.mce_sigma)}
+_dump_path = os.path.join(IMG_DIR, 'sim_calibration.json')
+with open(_dump_path, 'w') as _f:
+    json.dump({'In-distribution test': _calib}, _f, indent=2)
+print(f"  Saved {_dump_path}")
 
 # ============================================================
 # Figure 1: 4-method bias line plot (paper main text)

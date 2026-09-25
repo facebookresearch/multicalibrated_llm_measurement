@@ -34,6 +34,7 @@ np.random.seed(42)
 from lightgbm import LGBMClassifier
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from mcgrad import methods as mcgrad_methods
+from mcgrad.metrics import MulticalibrationError
 
 # Resolve paths relative to this file so the script runs from any cwd.
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -385,6 +386,38 @@ fig.savefig(
     dpi=300, bbox_inches='tight',
 )
 print(f"  Saved {os.path.join(IMG_DIR, 'figure_cap_score_distribution.png')}")
+
+# ============================================================
+# Calibration metrics before and after MCGrad (SI)
+# ============================================================
+# Global ECCE and MCE on held-out data, with MCE segments built from the
+# same features MCGrad uses. Absolute values are in probability units.
+def calibration_metrics(df, score_col, label_col, categorical, numerical):
+    m = MulticalibrationError(
+        df, label_col, score_col,
+        categorical_segment_columns=categorical,
+        numerical_segment_columns=numerical,
+        precision_dtype='float64',
+    )
+    return {'ecce': float(m.global_ecce), 'ecce_sigma': float(m.global_ecce_sigma),
+            'mce': float(m.mce), 'mce_sigma': float(m.mce_sigma)}
+
+
+_calib = {}
+for variant, pre_col, post_col, cat in [('Binary', 'binary_init', 'mc_bin', CAT_BIN),
+                                         ('P(Y/N)', 'pyn_score', 'mc_pyn', CAT_PYN)]:
+    _calib[variant] = {
+        name: {
+            stage: calibration_metrics(df, col, 'law_crime', cat, NUM)
+            for stage, col in [('pre', pre_col), ('post', post_col)]
+        }
+        for name, df in [('In-distribution test', test_df),
+                         ('Spain media', ood_spain), ('Belgium TV', ood_belgium)]
+    }
+_dump_path = os.path.join(IMG_DIR, 'cap_calibration.json')
+with open(_dump_path, 'w') as _f:
+    json.dump(_calib, _f, indent=2)
+print(f"  Saved {_dump_path}")
 
 # ============================================================
 # 8. Results summary table

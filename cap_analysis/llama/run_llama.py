@@ -17,6 +17,7 @@ Requires:
     - cap_analysis/data/full_sample.csv (105K documents)
     - cap_analysis/data/inference_output/llama-70b-verbalized-2stage/full_codebook.csv
 """
+import json
 import logging
 import os
 import warnings
@@ -33,6 +34,7 @@ from lightgbm import LGBMClassifier
 from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from mcgrad import methods as mcgrad_methods
+from mcgrad.metrics import MulticalibrationError
 
 np.random.seed(42)
 
@@ -123,6 +125,35 @@ for df in [test_df, ood_spain, ood_belgium]:
         categorical_feature_column_names=CAT_FEATS,
         numerical_feature_column_names=NUM_FEATS,
     )
+
+# ============================================================
+# Calibration metrics before and after MCGrad (SI)
+# ============================================================
+# Global ECCE and MCE on held-out data, with MCE segments built from the
+# same features MCGrad uses. Absolute values are in probability units.
+def calibration_metrics(df, score_col, label_col, categorical, numerical):
+    m = MulticalibrationError(
+        df, label_col, score_col,
+        categorical_segment_columns=categorical,
+        numerical_segment_columns=numerical,
+        precision_dtype='float64',
+    )
+    return {'ecce': float(m.global_ecce), 'ecce_sigma': float(m.global_ecce_sigma),
+            'mce': float(m.mce), 'mce_sigma': float(m.mce_sigma)}
+
+
+_calib = {
+    name: {
+        stage: calibration_metrics(df, col, LABEL, CAT_FEATS, NUM_FEATS)
+        for stage, col in [('pre', 'llm_score'), ('post', 'mc_pred')]
+    }
+    for name, df in [('In-distribution test', test_df),
+                     ('Spain media', ood_spain), ('Belgium TV', ood_belgium)]
+}
+_dump_path = os.path.join(SCRIPT_DIR, '..', '..', 'paper', 'images', 'llama_calibration.json')
+with open(_dump_path, 'w') as _f:
+    json.dump(_calib, _f, indent=2)
+print(f"  Saved {_dump_path}")
 
 # ============================================================
 # 5. Calibration parameters for CC, RG, SLD, IPW
