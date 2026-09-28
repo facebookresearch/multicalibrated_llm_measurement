@@ -295,7 +295,7 @@ for i, method in enumerate(methods):
 
 ax1.set_xticks(x_methods)
 ax1.set_xticklabels(methods, fontsize=8)
-ax1.set_ylabel('|Bias| (percentage points)')
+ax1.set_ylabel('|Prevalence error| (percentage points)')
 ax1.set_title('Within calibration', fontsize=10)
 ax1.axhline(y=0, color='#eeeeee', linewidth=0.5)
 ax1.legend(fontsize=7, loc='upper left', title='Scenario', title_fontsize=7,

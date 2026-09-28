@@ -6,7 +6,7 @@
 """Reproduce simulation results: prevalence estimation bias under covariate shift.
 
 Generates:
-  - Figure 1 (paper):  4-method bias line plot (CC, RG, isotonic, MCGrad), clipped ±40%
+  - Figure 1 (paper):  5-line bias plot (CC at two thresholds, RG, isotonic, MCGrad), clipped ±40%
   - Figure S1 (SI):    RMSE for the same 4 methods
   - Figure S2 (SI):    All 7 methods bias line plot
   - Console summary table
@@ -107,27 +107,31 @@ print(f"  Saved {_dump_path}")
 print("Generating Figure 1 (4-method bias line plot)...")
 
 methods_main = [
-    ('Classify & Count', results['avg_cc'], '#e41a1c', '-'),
-    ('Rogan-Gladen',     results['avg_rg'], '#377eb8', '-'),
-    ('Isotonic recalibration', results['avg_isotonic'], '#ff7f00', '-'),
-    ('MCGrad',           results['avg_mcgrad'], '#4daf4a', '-'),
+    ('Classify & Count (0.5 threshold)', 'cc', '#e41a1c', '-'),
+    ('Classify & Count (matched threshold)', 'cc_matched', '#e41a1c', '--'),
+    ('Rogan-Gladen',     'rg', '#377eb8', '-'),
+    ('Isotonic recalibration', 'isotonic', '#ff7f00', '-'),
+    ('MCGrad',           'mcgrad', '#4daf4a', '-'),
 ]
+
 
 fig1, ax1 = plt.subplots(figsize=(7, 3.5))
 
-for name, bias_curve, color, ls in methods_main:
-    # Mask values outside the visible range with NaN so the line breaks at
-    # the boundary instead of flatlining along it.
-    visible = np.where((bias_curve >= -40) & (bias_curve <= 40),
-                       bias_curve, np.nan)
-    ax1.plot(deltas, visible, color=color, linestyle=ls, linewidth=1.8,
-             label=name, zorder=3)
+for name, key, color, ls in methods_main:
+    # One faint line per run shows run-to-run spread; the thick line is the mean.
+    for run in results[f'all_{key}']:
+        ax1.plot(deltas, run, color=color, linewidth=0.4,
+                 alpha=0.15, zorder=2)
+    ax1.plot(deltas, results[f'avg_{key}'], color=color,
+             linestyle=ls, linewidth=1.8, label=name, zorder=3)
 
 ax1.axhline(y=0, color='#cccccc', linewidth=0.8, zorder=1)
 ax1.axvline(x=0, color='#eeeeee', linewidth=0.5, zorder=0)
 ax1.set_xlabel('Distribution shift: $\\Delta P(X\\!=\\!0)$')
-ax1.set_ylabel('Average bias (%)')
-ax1.set_ylim(-42, 42)
+ax1.set_ylabel('Relative bias (%)')
+# Lines leaving the range are clipped at the axes frame, so every curve
+# runs to the edge where it crosses it.
+ax1.set_ylim(-40, 40)
 ax1.legend(fontsize=8, loc='lower left')
 fig1.tight_layout()
 fig1.savefig(os.path.join(IMG_DIR, 'figure_sim_lineplot.png'), dpi=300, bbox_inches='tight')
@@ -219,6 +223,7 @@ bins = [
 all_methods_summary = [
     ('Uncalibrated',        results['avg_uncalibrated'],     results['mse_uncalibrated']),
     ('Classify & Count',    results['avg_cc'],               results['mse_cc']),
+    ('CC, matched thresh.', results['avg_cc_matched'],       results['mse_cc_matched']),
     ('Rogan-Gladen',        results['avg_rg'],               results['mse_rg']),
     ('PACC',                results['avg_pacc'],             results['mse_pacc']),
     ('SLD (EMQ)',           results['avg_sld'],              results['mse_sld']),

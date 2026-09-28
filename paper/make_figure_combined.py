@@ -83,7 +83,7 @@ def panel(ax, data, key, show_ylabel):
     ax.set_xticklabels(methods, fontsize=8)
     ax.axhline(y=0, color='#eeeeee', linewidth=0.5)
     if show_ylabel:
-        ax.set_ylabel('|Bias| (percentage points)')
+        ax.set_ylabel('|Prevalence error| (percentage points)')
     ax.legend(loc='upper left', title='Scenario', title_fontsize=7, framealpha=0.95)
 
 

@@ -14,7 +14,7 @@ from scipy.special import expit
 warnings.filterwarnings("ignore", category=FutureWarning)
 logging.getLogger("mcgrad").setLevel(logging.WARNING)
 
-METHODS = ["uncalibrated", "cc", "rg", "pacc", "sld", "isotonic", "mcgrad"]
+METHODS = ["uncalibrated", "cc", "cc_matched", "rg", "pacc", "sld", "isotonic", "mcgrad"]
 
 
 def generate_data(n_samples, p_x0, intercepts, slope, score_offsets, rng):
@@ -79,9 +79,12 @@ def fit_estimators(calib_data):
     """Fit every estimator's parameters on the labeled calibration sample."""
     source_prevalence = calib_data["Y"].mean()
 
-    # Classify & Count threshold: the score quantile that reproduces the
-    # calibration prevalence.
-    cc_threshold = np.quantile(calib_data["score"], 1 - source_prevalence)
+    # Classify & Count labels a document positive when its score is at least
+    # 0.5, the default decision rule; Rogan-Gladen corrects it at the same cutoff.
+    cc_threshold = 0.5
+    # Variant whose threshold is the score quantile that reproduces the
+    # calibration prevalence: a source-fitted correction like Rogan-Gladen.
+    cc_matched_threshold = np.quantile(calib_data["score"], 1 - source_prevalence)
     positives = calib_data[calib_data["Y"] == 1]["score"]
     negatives = calib_data[calib_data["Y"] == 0]["score"]
 
@@ -93,6 +96,7 @@ def fit_estimators(calib_data):
     return {
         "source_prevalence": source_prevalence,
         "cc_threshold": cc_threshold,
+        "cc_matched_threshold": cc_matched_threshold,
         "rg_tpr": (positives >= cc_threshold).mean(),
         "rg_fpr": (negatives >= cc_threshold).mean(),
         "pacc_pos_mean": positives.mean(),
@@ -113,6 +117,7 @@ def estimate_prevalences(target, fitted):
     return {
         "uncalibrated": scores.mean(),
         "cc": cc,
+        "cc_matched": (scores >= fitted["cc_matched_threshold"]).mean(),
         "rg": apply_rogan_gladen(cc, fitted["rg_tpr"], fitted["rg_fpr"]),
         "pacc": pacc_estimate(scores, fitted["pacc_pos_mean"], fitted["pacc_neg_mean"]),
         "sld": sld_estimate(iso_scores, fitted["source_prevalence"]),
