@@ -1,14 +1,23 @@
 ---
-title: "Supplementary Material: Calibrate Once, Measure Within Support"
+title: "Supplementary Material: Multicalibration for Unbiased Model-Based Prevalence Estimation"
+author:
+  - Fridolin Linder^1^
+  - Thomas Leeper^1^
+  - Daniel Haimovich^1^
+  - Niek Tax^1^
+  - Lorenzo Perini^1^
+  - Milan Vojnovic^1,2^
 bibliography: references.bib
 csl: chicago-author-date.csl
 geometry: margin=1in
-fontsize: 11pt
+fontsize: 12pt
 header-includes:
   - \usepackage{booktabs}
   - \usepackage{amsmath}
   - \usepackage{amssymb}
 ---
+
+^1^Meta Platforms Inc., ^2^The London School of Economics and Political Science
 
 # SI Appendix
 
@@ -16,7 +25,7 @@ header-includes:
 
 This section defines the prevalence estimation methods used in the simulation and the applications. The simulation compares seven of them (Figure S2); main-text Figure 1 shows four of them, with Classify \& Count at two thresholds.
 
-**Setup.** Let $h(X) \in [0,1]$ denote the device's probabilistic prediction for input $X$, with true label $Y \in \{0,1\}$. The goal is to estimate the target prevalence $\pi^* = P^*(Y=1)$ using only unlabeled target data $\{X_i^*\}_{i=1}^n$ and calibration parameters estimated from a labeled source dataset.
+**Setup.** Let $h(X) \in [0,1]$ denote the classifier's probabilistic prediction for input $X$, with true label $Y \in \{0,1\}$. The goal is to estimate the target prevalence $\pi^* = P^*(Y=1)$ using only unlabeled target data $\{X_i^*\}_{i=1}^n$ and calibration parameters estimated from a labeled source dataset.
 
 ### S1.1 Uncalibrated Averaging
 
@@ -242,9 +251,5 @@ Within the calibration distribution, MCGrad brings global ECCE to 1.0--2.0$\sigm
 | Llama, scores | Belgium TV | 14.04 → 3.44 | 68.8 → 18.4 | 14.04 → 3.44 | 68.8 → 18.4 |
 
 *Table S5: Calibration before → after MCGrad on held-out data; Opus and Llama rows are the CAP analyses. ECCE = estimated cumulative calibration error [@arrieta2022metrics]; MCE = multicalibration error, the maximum ECCE over feature-defined subgroups [@guy2025measuring]; pp = percentage points; $\sigma$ = standard deviations under perfect calibration. Simulation: one calibration and one evaluation sample of 10,000 at $P(X=0)=0.5$, subgroups on $X$. ACS subgroups on all 16 features; CAP subgroups on country, document type, party, decade, and (Opus) text length, plus the LLM label for the binary variant. Produced by the run scripts (`paper/images/*_calibration.json`).*
-
-## S9. Disclosure of Generative-AI Use
-
-The authors disclose the use of generative AI in the research and writing process. Under the GAIDeT taxonomy [@suchikova2025gaidet], the following tasks were delegated to GAI tools under full human supervision: literature search and systematization, code generation and optimization, data collection and cleaning, data analysis, visualization, reproducibility testing, text generation, proofreading and editing, reformatting, and identification of limitations. The GAI tools used were Claude Opus 4.6, Claude Opus 4.7, and Gemini 3 Pro. Note that Claude Opus 4.6 is also the measurement device under study in the main CAP application; its role there is as an object of analysis, not as a research assistant. No task was performed exclusively by AI; all outputs were verified and iterated on by the authors, who bear sole responsibility for the manuscript. GAI tools are not authors. Declaration submitted by: Fridolin Linder.
 
 # References
