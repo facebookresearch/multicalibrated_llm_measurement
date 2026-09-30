@@ -91,7 +91,7 @@ The authors used Claude Opus 4.6, 4.7, 5.0, 5.5, and Gemini 3 Pro to assist with
 
 # Data Availability Statement {.unnumbered}
 
-Replication code and data will be deposited in the Political Analysis Dataverse and are available at <https://github.com/facebookresearch/multicalibrated_llm_measurement>. The analyses use Comparative Agendas Project datasets [@capdata], including the U.S. Congressional Bills data [@wilkerson2025bills], coded under the CAP master codebook [@jones2025codebook], and American Community Survey microdata [@census2018acspums], accessed through the folktables package [@ding2021retiring].
+Replication code and data will be deposited in the Political Analysis Dataverse and are available at <https://github.com/facebookresearch/multicalibrated_llm_measurement>. The analyses use Comparative Agendas Project data from Denmark [@capdkquestions], Spain [@capesquestions; @capesmedia], the United States [@wilkerson2025bills] and Belgium [@capbemedia], coded under the CAP master codebook [@jones2025codebook], and American Community Survey microdata [@census2018acspums], accessed through the folktables package [@ding2021retiring].
 
 # Competing Interests {.unnumbered}
 
