@@ -196,29 +196,34 @@ def main():
 
     rng = np.random.default_rng(args.seed)
     seeds = rng.integers(2**31, size=args.n_boot)
+    path = os.path.join(IMG_DIR, 'acs_bootstrap.json')
     reps = []
+    save(path, args, point, reps)
     if args.n_boot:
         with Pool(args.workers, initializer=_init_worker, initargs=(frames, args.threads)) as pool:
             for rep in pool.imap(_replicate, seeds):
                 reps.append(rep)
+                # Checkpoint after every replicate so a partial run is usable.
+                save(path, args, point, reps)
                 print(f"  {len(reps)}/{args.n_boot} replicates ({time.time() - t0:.0f}s)", flush=True)
+    print(f"Saved {path}")
 
+
+def save(path, args, point, reps):
     summary = {}
     for k in point:
         summary[k] = {'true': point[k]['true']}
         for m in METHODS:
-            draws = np.array([r[k][m] for r in reps]) if reps else np.array([np.nan])
+            draws = np.array([r[k][m] for r in reps])
             summary[k][m] = {
                 'point': point[k][m],
                 'se': float(np.std(draws, ddof=1)) if len(reps) > 1 else None,
-                'ci_low': float(np.percentile(draws, 2.5)),
-                'ci_high': float(np.percentile(draws, 97.5)),
+                'ci_low': float(np.percentile(draws, 2.5)) if len(reps) else None,
+                'ci_high': float(np.percentile(draws, 97.5)) if len(reps) else None,
             }
-    path = os.path.join(IMG_DIR, 'acs_bootstrap.json')
     with open(path, 'w') as f:
-        json.dump({'n_boot': args.n_boot, 'seed': args.seed, 'summary': summary,
-                   'replicates': reps}, f, indent=1)
-    print(f"Saved {path}")
+        json.dump({'n_boot': args.n_boot, 'n_done': len(reps), 'seed': args.seed,
+                   'summary': summary, 'replicates': reps}, f, indent=1)
 
 
 if __name__ == '__main__':
