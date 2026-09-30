@@ -7,13 +7,19 @@
 Bootstrap uncertainty for the CAP (Claude Opus 4.6) prevalence errors.
 
 Each replicate resamples, with replacement, the calibration set (within each
-calibration sub-population), the in-distribution test pool (within each
+calibration sub-population; duplicated rows are collapsed into one row with a
+count weight, see below), the in-distribution test pool (within each
 sub-population), and the two out-of-distribution targets; redraws the
 within-support scenarios from the resampled test pool; refits every
 estimator; and records the signed prevalence error (estimate minus the true
 prevalence of that replicate's target). The LLM outputs are held fixed, so
 intervals reflect sampling variability of the labeled calibration data and of
 the targets, conditional on the measurement device.
+
+Calibration duplicates are passed as weights rather than repeated rows because
+MCGrad selects its number of boosting rounds by cross-validation and IPW
+cross-fits its propensity model: repeated rows would fall into both training
+and validation folds, making extra rounds look better than they are.
 
 Replicate 0 uses the original samples and seeds and reproduces the point
 estimates of run_cap_opus.py.
@@ -96,20 +102,29 @@ def resample_within(df, rng, by='subpop'):
     return pd.concat(parts, ignore_index=True)
 
 
+def collapse(df):
+    """One row per distinct calibration row ('_rid'), with count weight 'w'."""
+    counts = df['_rid'].value_counts()
+    out = df.drop_duplicates('_rid').set_index('_rid')
+    out['w'] = counts.reindex(out.index).astype(float)
+    return out.reset_index()
+
+
 def ipw_estimate(cal, target):
     features = CAT_PYN + NUM
     X = pd.concat([cal[features], target[features]], ignore_index=True)
     for c in CAT_PYN:
         X[c] = X[c].astype(str).astype('category')
     z = np.r_[np.zeros(len(cal)), np.ones(len(target))]
+    sw = np.r_[cal['w'].values, np.ones(len(target))]
     p = np.zeros(len(X))
     folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     for train_idx, test_idx in folds.split(X, z):
         clf = LGBMClassifier(random_state=42, verbose=-1)
-        clf.fit(X.iloc[train_idx], z[train_idx])
+        clf.fit(X.iloc[train_idx], z[train_idx], sample_weight=sw[train_idx])
         p[test_idx] = clf.predict_proba(X.iloc[test_idx])[:, 1]
     p = p[:len(cal)]
-    w = p / np.maximum(1 - p, 1e-10)
+    w = cal['w'].values * p / np.maximum(1 - p, 1e-10)
     return np.clip(np.average(cal['law_crime'].values, weights=w), 0, 1)
 
 
@@ -132,22 +147,28 @@ def resample_weighted(df, col, target, rs, factor=5.0):
 
 
 def estimate(cal_df, test_df, ood_spain, ood_belgium, rs):
-    """Fit all estimators on cal_df; return signed errors (pp) per scenario x method."""
+    """Fit all estimators on cal_df (count weights in 'w'); return signed errors (pp)."""
     cal_df = cal_df.copy()
-    base_rate = cal_df['law_crime'].mean()
+    w = cal_df['w'].values
+    # Unit weights (replicate 0) fit unweighted, reproducing the published point estimates.
+    wcol = None if (w == 1).all() else 'w'
+    base_rate = np.average(cal_df['law_crime'], weights=w)
     cal_df['binary_init'] = base_rate
 
     mc_bin = mcgrad_methods.MCGrad().fit(
         cal_df, 'binary_init', 'law_crime',
-        categorical_feature_column_names=CAT_BIN, numerical_feature_column_names=NUM)
+        categorical_feature_column_names=CAT_BIN, numerical_feature_column_names=NUM,
+        weight_column_name=wcol)
     mc_pyn = mcgrad_methods.MCGrad().fit(
         cal_df, 'pyn_score', 'law_crime',
-        categorical_feature_column_names=CAT_PYN, numerical_feature_column_names=NUM)
-    iso = mcgrad_methods.IsotonicRegression().fit(cal_df, 'pyn_score', 'law_crime')
+        categorical_feature_column_names=CAT_PYN, numerical_feature_column_names=NUM,
+        weight_column_name=wcol)
+    iso = mcgrad_methods.IsotonicRegression().fit(cal_df, 'pyn_score', 'law_crime',
+                                                  weight_column_name=wcol)
 
-    y, yhat = cal_df['law_crime'].astype(int), cal_df['llm_yes'].astype(int)
-    tpr = ((yhat == 1) & (y == 1)).sum() / y.sum()
-    fpr = ((yhat == 1) & (y == 0)).sum() / (1 - y).sum()
+    y, yhat = cal_df['law_crime'].astype(int).values, cal_df['llm_yes'].astype(int).values
+    tpr = (w * yhat * y).sum() / (w * y).sum()
+    fpr = (w * yhat * (1 - y)).sum() / (w * (1 - y)).sum()
 
     targets = {
         'Baseline': test_df.sample(n=min(N, len(test_df)), replace=True, random_state=rs),
@@ -194,7 +215,7 @@ def _replicate(seed):
     rng = np.random.default_rng(seed)
     cal_df, test_df, ood_spain, ood_belgium = _FRAMES
     return estimate(
-        resample_within(cal_df, rng), resample_within(test_df, rng),
+        collapse(resample_within(cal_df, rng)), resample_within(test_df, rng),
         resample_within(ood_spain, rng), resample_within(ood_belgium, rng),
         rs=int(rng.integers(2**31)),
     )
@@ -209,6 +230,8 @@ def main():
 
     data = load_data()
     cal_df, test_df, ood_spain, ood_belgium = split(data)
+    cal_df['_rid'] = np.arange(len(cal_df))
+    cal_df['w'] = 1.0
     print(f"Cal: {len(cal_df):,} | Test: {len(test_df):,} | "
           f"OOD Spain: {len(ood_spain):,} | OOD Belgium: {len(ood_belgium):,}")
 
@@ -220,14 +243,27 @@ def main():
 
     rng = np.random.default_rng(args.seed)
     seeds = rng.integers(2**31, size=args.n_boot)
+    path = os.path.join(IMG_DIR, 'cap_bootstrap.json')
+    reps = []
+    save(path, args, point, reps)
     with Pool(args.workers, initializer=_init_worker,
               initargs=(cal_df, test_df, ood_spain, ood_belgium)) as pool:
-        reps = []
         for rep in pool.imap(_replicate, seeds):
             reps.append(rep)
+            # Checkpoint after every replicate so a partial run is usable.
+            save(path, args, point, reps)
             if len(reps) % 25 == 0:
                 print(f"  {len(reps)}/{args.n_boot} replicates ({time.time() - t0:.0f}s)", flush=True)
 
+    summary = save(path, args, point, reps)
+    print(f"Saved {path}")
+    for s in SCENARIOS:
+        print(f"  {s:15s} " + ' '.join(
+            f"{m}={summary[s][m]['point']:+.1f}[{summary[s][m]['ci_low']:+.1f},{summary[s][m]['ci_high']:+.1f}]"
+            for m in METHODS))
+
+
+def save(path, args, point, reps):
     summary = {}
     for s in SCENARIOS:
         summary[s] = {}
@@ -235,22 +271,15 @@ def main():
             draws = np.array([r[s][m] for r in reps])
             summary[s][m] = {
                 'point': point[s][m],
-                'se': float(draws.std(ddof=1)),
-                'ci_low': float(np.percentile(draws, 2.5)),
-                'ci_high': float(np.percentile(draws, 97.5)),
+                'se': float(draws.std(ddof=1)) if len(reps) > 1 else None,
+                'ci_low': float(np.percentile(draws, 2.5)) if len(reps) else None,
+                'ci_high': float(np.percentile(draws, 97.5)) if len(reps) else None,
             }
         summary[s]['true'] = point[s]['true']
-
-    path = os.path.join(IMG_DIR, 'cap_bootstrap.json')
     with open(path, 'w') as f:
-        json.dump({'n_boot': args.n_boot, 'seed': args.seed, 'summary': summary,
-                   'replicates': reps}, f, indent=1)
-    print(f"Saved {path}")
-    for s in SCENARIOS:
-        print(f"  {s:15s} " + ' '.join(
-            f"{m}={summary[s][m]['point']:+.1f}[{summary[s][m]['ci_low']:+.1f},{summary[s][m]['ci_high']:+.1f}]"
-            for m in METHODS))
-
+        json.dump({'n_boot': args.n_boot, 'n_done': len(reps), 'seed': args.seed,
+                   'summary': summary, 'replicates': reps}, f, indent=1)
+    return summary
 
 if __name__ == '__main__':
     main()

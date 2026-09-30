@@ -13,6 +13,12 @@ target). The logistic-regression classifier is held fixed, so intervals
 reflect sampling variability of the labeled calibration data and of the
 targets, conditional on the classifier.
 
+Duplicated calibration rows are collapsed into one row with a count weight
+rather than repeated, because MCGrad selects its number of boosting rounds by
+cross-validation and IPW cross-fits its propensity model: repeated rows would
+fall into both training and validation folds, making extra rounds look better
+than they are.
+
 Replicate 0 uses the original samples and seeds and reproduces the point
 estimates of run_acs.py.
 
@@ -86,7 +92,18 @@ def prepare():
     for df in [calibration_df, test_df, ood_df]:
         df[BASE] = pipeline.predict_proba(df[feature_cols])[:, 1]
     keep = ALL_FEATURE_COLS + [LABEL_COLUMN, BASE]
-    return calibration_df[keep], test_df[keep], ood_df[keep]
+    calibration_df = calibration_df[keep].reset_index(drop=True)
+    calibration_df['_rid'] = np.arange(len(calibration_df))
+    calibration_df['w'] = 1.0
+    return calibration_df, test_df[keep], ood_df[keep]
+
+
+def collapse(df):
+    """One row per distinct calibration row ('_rid'), with count weight 'w'."""
+    counts = df['_rid'].value_counts()
+    out = df.drop_duplicates('_rid').set_index('_rid')
+    out['w'] = counts.reindex(out.index).astype(float)
+    return out.reset_index()
 
 
 def ipw_estimate(cal_df, target_df, n_jobs):
@@ -94,14 +111,15 @@ def ipw_estimate(cal_df, target_df, n_jobs):
     for c in CAT_SEG:
         X[c] = X[c].astype(str).astype('category')
     z = np.r_[np.zeros(len(cal_df)), np.ones(len(target_df))]
+    sw = np.r_[cal_df['w'].values, np.ones(len(target_df))]
     p = np.zeros(len(X))
     folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     for train_idx, test_idx in folds.split(X, z):
         clf = LGBMClassifier(random_state=42, verbose=-1, n_jobs=n_jobs)
-        clf.fit(X.iloc[train_idx], z[train_idx])
+        clf.fit(X.iloc[train_idx], z[train_idx], sample_weight=sw[train_idx])
         p[test_idx] = clf.predict_proba(X.iloc[test_idx])[:, 1]
     p = p[:len(cal_df)]
-    w = p / np.maximum(1 - p, 1e-10)
+    w = cal_df['w'].values * p / np.maximum(1 - p, 1e-10)
     return np.clip(np.average(cal_df[LABEL_COLUMN].values, weights=w), 0, 1)
 
 
@@ -118,17 +136,27 @@ def sld_estimate(scores, source_prevalence, max_iter=1000, tol=1e-8):
 
 
 def estimate(cal_df, test_df, ood_df, rs, n_jobs):
-    """Fit all estimators on cal_df; return signed errors (pp) per setting x shift x method."""
-    iso = mcgrad_methods.IsotonicRegression().fit(cal_df, BASE, LABEL_COLUMN)
+    """Fit all estimators on cal_df (count weights in 'w'); return signed errors (pp)."""
+    w = cal_df['w'].to_numpy()
+    # Unit weights (replicate 0) fit unweighted, reproducing the published point estimates.
+    wcol = None if (w == 1).all() else 'w'
+    iso = mcgrad_methods.IsotonicRegression().fit(cal_df, BASE, LABEL_COLUMN,
+                                                  weight_column_name=wcol)
     mc = mcgrad_methods.MCGrad().fit(
         cal_df, BASE, LABEL_COLUMN,
-        categorical_feature_column_names=CAT_SEG, numerical_feature_column_names=NUM_SEG)
-    thr = calibrate_threshold_prevalence_matching(cal_df[LABEL_COLUMN], cal_df[BASE])
-    tpr, fpr = estimate_classifier_error_rates(cal_df[LABEL_COLUMN], cal_df[BASE], thr)
-    src_prev = cal_df[LABEL_COLUMN].mean()
+        categorical_feature_column_names=CAT_SEG, numerical_feature_column_names=NUM_SEG,
+        weight_column_name=wcol)
+    # Threshold and error rates on the expanded sample (exact bootstrap equivalents).
+    reps = w.astype(int)
+    y_exp = pd.Series(np.repeat(cal_df[LABEL_COLUMN].to_numpy(), reps))
+    s_exp = pd.Series(np.repeat(cal_df[BASE].to_numpy(), reps))
+    thr = calibrate_threshold_prevalence_matching(y_exp, s_exp)
+    tpr, fpr = estimate_classifier_error_rates(y_exp, s_exp, thr)
+    src_prev = np.average(cal_df[LABEL_COLUMN], weights=w)
     y_cal = cal_df[LABEL_COLUMN].astype(bool).to_numpy()
-    pos_mean = cal_df[BASE].to_numpy()[y_cal].mean()
-    neg_mean = cal_df[BASE].to_numpy()[~y_cal].mean()
+    s_cal = cal_df[BASE].to_numpy()
+    pos_mean = np.average(s_cal[y_cal], weights=w[y_cal])
+    neg_mean = np.average(s_cal[~y_cal], weights=w[~y_cal])
 
     out = {}
     for setting, pool in [('In-Dist', test_df), ('OOD', ood_df)]:
@@ -171,7 +199,7 @@ def _boot(df, rng):
 def _replicate(seed):
     rng = np.random.default_rng(seed)
     cal_df, test_df, ood_df = _FRAMES
-    return estimate(_boot(cal_df, rng), _boot(test_df, rng), _boot(ood_df, rng),
+    return estimate(collapse(_boot(cal_df, rng)), _boot(test_df, rng), _boot(ood_df, rng),
                     rs=int(rng.integers(2**31)), n_jobs=_N_JOBS)
 
 
