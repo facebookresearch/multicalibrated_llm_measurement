@@ -118,7 +118,7 @@ The score is the elicited P(Yes). One shard of 100 Belgian newspaper articles re
 
 **American Community Survey.** Training states are TX, MI, PA, OH, IL, GA, NC, VA (2016--2018); held-out test states are CA, NY, FL, WA, AZ, CO, with in-distribution test $n\approx 920{,}000$. Age-shifted targets are produced by importance-weighted resampling. Post-hoc calibration uses isotonic regression and MCGrad with categorical and numerical features. The 2016--2018 1-Year person files [@census2018acspums] were downloaded through folktables [@ding2021retiring] on 14 April 2026.
 
-**Uncertainty.** Intervals for the CAP and ACS applications come from a nonparametric bootstrap that holds the classifier fixed (the Opus outputs; the ACS logistic regression), so they reflect sampling variability of the labeled calibration data and of the targets, conditional on the measurement device. Each replicate resamples with replacement the calibration set (for CAP, within each sub-population), the in-distribution test pool, and the out-of-distribution targets; redraws the reweighted scenarios from the resampled pools with a new seed; refits every estimator, including MCGrad, isotonic regression, the Rogan-Gladen rates and the IPW propensity models; and records the signed error against that replicate's realized target prevalence. Point estimates are from the original samples. CAP uses 200 replicates and reports 95\% percentile intervals (`cap_analysis/opus/bootstrap_cap_opus.py`).
+**Uncertainty.** Intervals for the CAP and ACS applications come from a nonparametric bootstrap that holds the classifier fixed (the Opus outputs; the ACS logistic regression), so they reflect sampling variability of the labeled calibration data and of the targets, conditional on the measurement device. Each replicate resamples with replacement the calibration set (for CAP, within each sub-population), the in-distribution test pool, and the out-of-distribution targets; redraws the reweighted scenarios from the resampled pools with a new seed; refits every estimator, including MCGrad, isotonic regression, the Rogan-Gladen rates and the IPW propensity models; and records the signed error against that replicate's realized target prevalence. Calibration observations drawn more than once enter as a single row weighted by their count rather than as repeated rows: MCGrad selects its number of boosting rounds by cross-validation and IPW cross-fits its propensity model, and repeated rows would fall on both sides of a fold, favoring overfitted fits. Point estimates are from the original samples. We report 95\% percentile intervals from 200 replicates for CAP (`cap_analysis/opus/bootstrap_cap_opus.py`) and 50 for ACS (`acs_analysis/bootstrap_acs.py`), where each replicate refits IPW on 20,000-observation targets against the 644,000-observation calibration set. Percentile intervals, rather than normal intervals, are needed because the IPW errors are heavy-tailed on the age-skewed ACS targets.
 
 ## S2. Robustness: Replication with Open-Weight LLM (Llama 3.3 70B)
 
@@ -172,18 +172,34 @@ The pattern matches the simulation and CAP results (Figure S4; full numbers in T
 
 ### Table S1: ACS Employment Prevalence Estimation Error
 
-| Setting | Age Dist.    | True Prev. | Raw   | CC    | RG      | PACC    | SLD     | IPW   | Iso.  | MCGrad |
-|---------|--------------|------------|-------|-------|---------|---------|---------|-------|-------|--------|
-| In-Dist | Original     | 46.0%      | -0.31 | -0.07 | +0.26   | -0.07   | +0.01   | -0.38  | -0.30 | -0.27  |
-| In-Dist | Young-skewed | 12.8%      | +1.93 | +2.47 | -12.82  | -12.82  | -12.82  | -10.12 | +2.04 | -0.11  |
-| In-Dist | Old-skewed   | 16.8%      | +7.23 | -6.62 | -16.77  | -16.77  | -16.76  | +0.24  | +6.65 | +0.22  |
-| In-Dist | Bimodal      | 21.1%      | +4.57 | -1.50 | -18.62  | -19.97  | -16.79  | +0.35  | +4.33 | +0.12  |
-| OOD     | Original     | 45.1%      | +1.15 | +1.40 | +2.12   | +2.13   | +2.25   | +1.38  | +1.17 | +1.35  |
-| OOD     | Young-skewed | 13.0%      | +2.93 | +3.73 | -12.96  | -12.96  | -12.39  | -2.80  | +3.08 | +0.88  |
-| OOD     | Old-skewed   | 16.0%      | +8.47 | -5.64 | -15.97  | -15.97  | -15.97  | -15.45 | +7.91 | +1.01  |
-| OOD     | Bimodal      | 20.8%      | +5.91 | +0.09 | -16.14  | -17.27  | -15.63  | +1.39  | +5.69 | +1.13  |
+```{=latex}
+\begin{center}\resizebox{\linewidth}{!}{%
+\begin{tabular}{llrrrrrrrrr}
+\toprule
+Setting & Age dist. & True prev. & Raw & CC & RG & PACC & SLD & IPW & Iso. & MCGrad \\
+\midrule
+In-Dist & Original & 46.0\% & $-0.31$ & $-0.07$ & $+0.26$ & $-0.07$ & $+0.01$ & $-0.38$ & $-0.30$ & $-0.27$ \\
+ & & & $[-0.6,\,+0.3]$ & $[-0.5,\,+0.4]$ & $[-0.9,\,+0.8]$ & $[-0.9,\,+0.6]$ & $[-0.9,\,+0.6]$ & $[-0.6,\,+0.3]$ & $[-0.6,\,+0.3]$ & $[-0.6,\,+0.3]$ \\[2pt]
+In-Dist & Young-skewed & 12.8\% & $+1.93$ & $+2.47$ & $-12.82$ & $-12.82$ & $-12.82$ & $-10.12$ & $+2.04$ & $-0.11$ \\
+ & & & $[+1.7,\,+2.3]$ & $[+2.2,\,+2.9]$ & $[-13.5,\,-12.5]$ & $[-13.5,\,-12.5]$ & $[-13.1,\,-12.2]$ & $[-13.3,\,+8.6]$ & $[+1.8,\,+2.4]$ & $[-0.3,\,+0.2]$ \\[2pt]
+In-Dist & Old-skewed & 16.8\% & $+7.23$ & $-6.62$ & $-16.77$ & $-16.77$ & $-16.76$ & $+0.24$ & $+6.65$ & $+0.22$ \\
+ & & & $[+6.8,\,+7.5]$ & $[-7.3,\,-6.4]$ & $[-17.4,\,-16.4]$ & $[-17.4,\,-16.4]$ & $[-17.4,\,-16.4]$ & $[-17.1,\,+50.0]$ & $[+6.2,\,+7.0]$ & $[-0.3,\,+0.4]$ \\[2pt]
+In-Dist & Bimodal & 21.1\% & $+4.57$ & $-1.50$ & $-18.62$ & $-19.97$ & $-16.79$ & $+0.35$ & $+4.33$ & $+0.12$ \\
+ & & & $[+4.2,\,+4.8]$ & $[-1.9,\,-1.2]$ & $[-19.2,\,-18.1]$ & $[-20.5,\,-19.4]$ & $[-17.6,\,-16.4]$ & $[-0.1,\,+0.5]$ & $[+3.9,\,+4.6]$ & $[-0.3,\,+0.3]$ \\[2pt]
+OOD & Original & 45.1\% & $+1.15$ & $+1.40$ & $+2.12$ & $+2.13$ & $+2.25$ & $+1.38$ & $+1.17$ & $+1.35$ \\
+ & & & $[+0.8,\,+1.8]$ & $[+1.1,\,+2.3]$ & $[+1.6,\,+3.3]$ & $[+1.3,\,+2.9]$ & $[+1.4,\,+3.0]$ & $[+0.8,\,+1.8]$ & $[+0.8,\,+1.8]$ & $[+1.0,\,+1.9]$ \\[2pt]
+OOD & Young-skewed & 13.0\% & $+2.93$ & $+3.73$ & $-12.96$ & $-12.96$ & $-12.39$ & $-2.80$ & $+3.08$ & $+0.88$ \\
+ & & & $[+2.5,\,+3.1]$ & $[+3.5,\,+4.1]$ & $[-13.3,\,-12.7]$ & $[-13.3,\,-12.7]$ & $[-12.8,\,-11.9]$ & $[-13.2,\,+42.7]$ & $[+2.7,\,+3.2]$ & $[+0.5,\,+1.0]$ \\[2pt]
+OOD & Old-skewed & 16.0\% & $+8.47$ & $-5.64$ & $-15.97$ & $-15.97$ & $-15.97$ & $-15.45$ & $+7.91$ & $+1.01$ \\
+ & & & $[+7.9,\,+8.7]$ & $[-6.1,\,-5.1]$ & $[-16.6,\,-15.5]$ & $[-16.6,\,-15.5]$ & $[-16.6,\,-15.5]$ & $[-16.2,\,+75.6]$ & $[+7.4,\,+8.2]$ & $[+0.6,\,+1.4]$ \\[2pt]
+OOD & Bimodal & 20.8\% & $+5.91$ & $+0.09$ & $-16.14$ & $-17.27$ & $-15.63$ & $+1.39$ & $+5.69$ & $+1.13$ \\
+ & & & $[+5.5,\,+6.2]$ & $[-0.6,\,+0.3]$ & $[-17.3,\,-15.9]$ & $[-18.1,\,-16.8]$ & $[-16.4,\,-15.2]$ & $[+1.0,\,+1.6]$ & $[+5.4,\,+6.0]$ & $[+0.9,\,+1.4]$ \\[2pt]
+\bottomrule
+\end{tabular}}
+\end{center}
+```
 
-*Prevalence estimation error in percentage points (pp) under synthetic age distribution shift. Raw = uncalibrated averaging, CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted prevalence estimation (cross-fitted default LightGBM propensity model on all 16 features), Iso. = Isotonic regression.*
+*Prevalence estimation error in percentage points (pp) under synthetic age distribution shift. Raw = uncalibrated averaging, CC = Classify & Count, RG = Rogan-Gladen, IPW = importance-weighted prevalence estimation (cross-fitted default LightGBM propensity model on all 16 features), Iso. = Isotonic regression. Brackets: 95% percentile intervals from 50 bootstrap replicates (Section S1.9).*
 
 ### Table S2: CAP Law & Crime Prevalence Estimation Error (Claude Opus 4.6)
 
@@ -194,15 +210,15 @@ The pattern matches the simulation and CAP results (Figure S4; full numbers in T
 Scenario & Shift type & True prev. & CC & RG & SLD & IPW & Iso. & \shortstack[r]{MC\\(binary)} & \shortstack[r]{MC\\(scores)} \\
 \midrule
 Baseline & None & 7.9\% & $+2.2$ & $+0.5$ & $+0.1$ & $+0.2$ & $+0.1$ & $+0.1$ & $+0.2$ \\
- & & & $[+1.6,\,+2.8]$ & $[-0.2,\,+1.2]$ & $[-0.5,\,+0.8]$ & $[-1.0,\,+1.2]$ & $[-0.5,\,+0.6]$ & $[-0.2,\,+0.9]$ & $[-0.5,\,+0.6]$ \\[2pt]
+ & & & $[+1.6,\,+2.8]$ & $[-0.2,\,+1.2]$ & $[-0.5,\,+0.8]$ & $[-1.1,\,+1.2]$ & $[-0.5,\,+0.6]$ & $[-0.5,\,+0.7]$ & $[-0.4,\,+0.6]$ \\[2pt]
 Country shift & Within-cal. & 8.4\% & $+3.3$ & $+1.7$ & $+1.4$ & $+0.1$ & $+0.9$ & $+0.4$ & $+0.4$ \\
- & & & $[+2.4,\,+4.0]$ & $[+0.6,\,+2.6]$ & $[+0.8,\,+2.7]$ & $[-1.4,\,+1.6]$ & $[+0.3,\,+1.7]$ & $[-0.2,\,+1.3]$ & $[-0.6,\,+0.9]$ \\[2pt]
+ & & & $[+2.4,\,+4.0]$ & $[+0.6,\,+2.6]$ & $[+0.8,\,+2.7]$ & $[-1.3,\,+1.5]$ & $[+0.3,\,+1.7]$ & $[-0.5,\,+1.1]$ & $[-0.4,\,+1.0]$ \\[2pt]
 Doc-type shift & Within-cal. & 6.3\% & $+1.6$ & $-0.3$ & $-0.6$ & $+0.2$ & $+0.0$ & $-0.0$ & $+0.1$ \\
- & & & $[+1.0,\,+2.3]$ & $[-1.1,\,+0.5]$ & $[-1.2,\,+0.1]$ & $[-0.9,\,+1.0]$ & $[-0.6,\,+0.6]$ & $[-0.6,\,+1.0]$ & $[-0.5,\,+0.7]$ \\[2pt]
+ & & & $[+1.0,\,+2.3]$ & $[-1.1,\,+0.5]$ & $[-1.2,\,+0.1]$ & $[-1.0,\,+1.0]$ & $[-0.6,\,+0.6]$ & $[-0.7,\,+0.7]$ & $[-0.5,\,+0.7]$ \\[2pt]
 Spain media & OOD doc type & 19.5\% & $+3.6$ & $+3.1$ & $+3.8$ & $-11.9$ & $-2.5$ & $-1.9$ & $-4.5$ \\
- & & & $[+2.7,\,+4.4]$ & $[+2.0,\,+4.1]$ & $[+2.4,\,+5.3]$ & $[-13.1,\,-10.2]$ & $[-3.5,\,-1.5]$ & $[-7.5,\,+1.3]$ & $[-10.0,\,-2.5]$ \\[2pt]
+ & & & $[+2.7,\,+4.4]$ & $[+2.0,\,+4.1]$ & $[+2.4,\,+5.3]$ & $[-13.0,\,-10.2]$ & $[-3.5,\,-1.5]$ & $[-4.8,\,-0.5]$ & $[-6.6,\,-2.6]$ \\[2pt]
 Belgium TV & OOD doc type & 11.1\% & $+4.8$ & $+3.7$ & $+4.7$ & $-2.4$ & $+2.6$ & $+0.7$ & $+1.6$ \\
- & & & $[+4.3,\,+5.4]$ & $[+2.9,\,+4.5]$ & $[+3.9,\,+5.4]$ & $[-3.5,\,-1.4]$ & $[+1.8,\,+3.2]$ & $[-1.8,\,+3.1]$ & $[-0.9,\,+2.8]$ \\[2pt]
+ & & & $[+4.3,\,+5.4]$ & $[+2.9,\,+4.5]$ & $[+3.9,\,+5.4]$ & $[-3.5,\,-1.4]$ & $[+1.8,\,+3.2]$ & $[-0.8,\,+2.0]$ & $[+0.6,\,+2.6]$ \\[2pt]
 \bottomrule
 \end{tabular}}
 \end{center}
