@@ -118,6 +118,8 @@ The score is the elicited P(Yes). One shard of 100 Belgian newspaper articles re
 
 **American Community Survey.** Training states are TX, MI, PA, OH, IL, GA, NC, VA (2016--2018); held-out test states are CA, NY, FL, WA, AZ, CO, with in-distribution test $n\approx 920{,}000$. Age-shifted targets are produced by importance-weighted resampling. Post-hoc calibration uses isotonic regression and MCGrad with categorical and numerical features. The 2016--2018 1-Year person files [@census2018acspums] were downloaded through folktables [@ding2021retiring] on 14 April 2026.
 
+**Uncertainty.** Intervals for the CAP and ACS applications come from a nonparametric bootstrap that holds the classifier fixed (the Opus outputs; the ACS logistic regression), so they reflect sampling variability of the labeled calibration data and of the targets, conditional on the measurement device. Each replicate resamples with replacement the calibration set (for CAP, within each sub-population), the in-distribution test pool, and the out-of-distribution targets; redraws the reweighted scenarios from the resampled pools with a new seed; refits every estimator, including MCGrad, isotonic regression, the Rogan-Gladen rates and the IPW propensity models; and records the signed error against that replicate's realized target prevalence. Point estimates are from the original samples. CAP uses 200 replicates and reports 95\% percentile intervals (`cap_analysis/opus/bootstrap_cap_opus.py`).
+
 ## S2. Robustness: Replication with Open-Weight LLM (Llama 3.3 70B)
 
 The main text reports results using Claude Opus 4.6 as the LLM measurement device. To verify that the findings are not specific to a particular model, we replicate the CAP analysis using Llama 3.3 70B Instruct [@meta2024llama33], a model in the Llama 3 family [@llama2024herd] (4-bit NF4 quantized, run on a single A100 80GB GPU). We report results for verbalized confidence scores; we also describe token log-probabilities, which we considered and rejected.
@@ -185,15 +187,28 @@ The pattern matches the simulation and CAP results (Figure S4; full numbers in T
 
 ### Table S2: CAP Law & Crime Prevalence Estimation Error (Claude Opus 4.6)
 
-| Scenario | Shift Type | True Prev. | CC | RG | SLD | IPW | Iso. | MC (binary) | MC (scores) |
-|---|---|---|---|---|---|---|---|---|---|
-| Baseline | None | 7.9% | +2.2 | +0.5 | +0.1 | +0.2 | +0.1 | +0.1 | +0.2 |
-| Country shift | Within-cal. | 8.4% | +3.3 | +1.7 | +1.4 | +0.1 | +0.9 | +0.4 | +0.4 |
-| Doc-type shift | Within-cal. | 6.3% | +1.6 | -0.3 | -0.6 | +0.2 | +0.0 | -0.0 | +0.1 |
-| Spain media | OOD doc type | 19.5% | +3.6 | +3.1 | +3.8 | -11.9 | -2.5 | -1.9 | -4.5 |
-| Belgium TV | OOD doc type | 11.1% | +4.8 | +3.7 | +4.7 | -2.4 | +2.6 | +0.7 | +1.6 |
+```{=latex}
+\begin{center}\resizebox{\linewidth}{!}{%
+\begin{tabular}{llrrrrrrrr}
+\toprule
+Scenario & Shift type & True prev. & CC & RG & SLD & IPW & Iso. & \shortstack[r]{MC\\(binary)} & \shortstack[r]{MC\\(scores)} \\
+\midrule
+Baseline & None & 7.9\% & $+2.2$ & $+0.5$ & $+0.1$ & $+0.2$ & $+0.1$ & $+0.1$ & $+0.2$ \\
+ & & & $[+1.6,\,+2.8]$ & $[-0.2,\,+1.2]$ & $[-0.5,\,+0.8]$ & $[-1.0,\,+1.2]$ & $[-0.5,\,+0.6]$ & $[-0.2,\,+0.9]$ & $[-0.5,\,+0.6]$ \\[2pt]
+Country shift & Within-cal. & 8.4\% & $+3.3$ & $+1.7$ & $+1.4$ & $+0.1$ & $+0.9$ & $+0.4$ & $+0.4$ \\
+ & & & $[+2.4,\,+4.0]$ & $[+0.6,\,+2.6]$ & $[+0.8,\,+2.7]$ & $[-1.4,\,+1.6]$ & $[+0.3,\,+1.7]$ & $[-0.2,\,+1.3]$ & $[-0.6,\,+0.9]$ \\[2pt]
+Doc-type shift & Within-cal. & 6.3\% & $+1.6$ & $-0.3$ & $-0.6$ & $+0.2$ & $+0.0$ & $-0.0$ & $+0.1$ \\
+ & & & $[+1.0,\,+2.3]$ & $[-1.1,\,+0.5]$ & $[-1.2,\,+0.1]$ & $[-0.9,\,+1.0]$ & $[-0.6,\,+0.6]$ & $[-0.6,\,+1.0]$ & $[-0.5,\,+0.7]$ \\[2pt]
+Spain media & OOD doc type & 19.5\% & $+3.6$ & $+3.1$ & $+3.8$ & $-11.9$ & $-2.5$ & $-1.9$ & $-4.5$ \\
+ & & & $[+2.7,\,+4.4]$ & $[+2.0,\,+4.1]$ & $[+2.4,\,+5.3]$ & $[-13.1,\,-10.2]$ & $[-3.5,\,-1.5]$ & $[-7.5,\,+1.3]$ & $[-10.0,\,-2.5]$ \\[2pt]
+Belgium TV & OOD doc type & 11.1\% & $+4.8$ & $+3.7$ & $+4.7$ & $-2.4$ & $+2.6$ & $+0.7$ & $+1.6$ \\
+ & & & $[+4.3,\,+5.4]$ & $[+2.9,\,+4.5]$ & $[+3.9,\,+5.4]$ & $[-3.5,\,-1.4]$ & $[+1.8,\,+3.2]$ & $[-1.8,\,+3.1]$ & $[-0.9,\,+2.8]$ \\[2pt]
+\bottomrule
+\end{tabular}}
+\end{center}
+```
 
-*CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; SLD = Saerens-Latinne-Decaestecker (label shift, applied to isotonic-recalibrated probability scores); IPW = importance-weighted estimation (target-specific density ratio from a cross-fitted gradient-boosted propensity model); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores.*
+*CC = Classify & Count (fraction of Yes labels); RG = Rogan-Gladen adjustment on binary labels; SLD = Saerens-Latinne-Decaestecker (label shift, applied to isotonic-recalibrated probability scores); IPW = importance-weighted estimation (target-specific density ratio from a cross-fitted gradient-boosted propensity model); Iso. = isotonic regression on probability scores; MC (binary) = MCGrad on binary labels with base-rate initialization; MC (scores) = MCGrad on probability scores. Brackets: 95% percentile intervals from 200 bootstrap replicates (Section S1.9).*
 
 ## S4. Simulation: Design and RMSE
 
