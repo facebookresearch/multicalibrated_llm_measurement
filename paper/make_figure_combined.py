@@ -6,7 +6,8 @@
 """Build the combined main-text figure (CAP + ACS) from the two bias dumps.
 
 Reads paper/images/cap_biases.json and paper/images/acs_biases.json, written by
-cap_analysis/opus/run_cap_opus.py and acs_analysis/run_acs.py respectively, and
+cap_analysis/opus/run_cap_opus.py and acs_analysis/run_acs.py respectively, plus
+the bootstrap intervals in cap_bootstrap.json and acs_bootstrap.json, and
 draws a 2x2 panel figure: rows are the two applications, columns are the shift
 regime. All panels share one y-axis so biases are comparable across panels.
 
@@ -57,6 +58,27 @@ cap['methods'] = [_RENAME.get(m, m) for m in cap['methods']]
 cap['within'] = {_RENAME.get(m, m): v for m, v in cap['within'].items()}
 cap['ood'] = {_RENAME.get(m, m): v for m, v in cap['ood'].items()}
 
+# Bootstrap intervals: map each figure method/scenario to its key in the
+# bootstrap summaries (signed-error 95% percentile intervals).
+with open(os.path.join(IMG_DIR, 'cap_bootstrap.json')) as f:
+    cap_boot = json.load(f)['summary']
+with open(os.path.join(IMG_DIR, 'acs_bootstrap.json')) as f:
+    acs_boot = json.load(f)['summary']
+BOOT_METHOD = {'Classify &\nCount': 'CC', 'Rogan-\nGladen': 'RG', 'IPW': 'IPW',
+               'Isotonic\nRegression': 'Iso'}
+cap['interval'] = lambda m, key, sc: cap_boot[sc][BOOT_METHOD.get(m, 'MC (binary)')]
+acs['interval'] = lambda m, key, sc: acs_boot[
+    f"{'In-Dist' if key == 'within' else 'OOD'}|{sc}"][BOOT_METHOD.get(m, 'MCGrad')]
+Y_MAX = 21
+
+
+def abs_interval(lo, hi):
+    """Interval for |error| implied by a signed-error interval [lo, hi]."""
+    if lo <= 0 <= hi:
+        return 0.0, max(-lo, hi)
+    return min(abs(lo), abs(hi)), max(abs(lo), abs(hi))
+
+
 ROWS = [
     ('CAP: Law & Crime coding (Claude Opus 4.6)', cap),
     ('ACS: employment (logistic regression)', acs),
@@ -73,6 +95,16 @@ def panel(ax, data, key, show_ylabel):
         biases = data[key][method]
         for j, sc in enumerate(scenarios):
             offset = (j - (n_sc - 1) / 2) * 0.12
+            ci = data['interval'](method, key, sc)
+            lo, hi = abs_interval(ci['ci_low'], ci['ci_high'])
+            ax.plot([i + offset] * 2, [lo, min(hi, Y_MAX)], color=DOT_COLOR,
+                    linewidth=0.8, alpha=0.6, zorder=3)
+            if hi > Y_MAX:
+                # Interval runs off the plot: label its upper bound at the top.
+                # Alternate label heights so adjacent scenarios don't overlap.
+                ax.text(i + offset, Y_MAX - 0.2 - 1.3 * (j % 2), f'\u2191{hi:.0f}', fontsize=6,
+                        ha='center', va='top', color=DOT_COLOR,
+                        bbox=dict(facecolor='white', edgecolor='none', pad=0.5))
             ax.scatter(i + offset, biases[j],
                        color=DOT_COLOR, marker=MARKERS[j % len(MARKERS)], s=32,
                        zorder=5, edgecolors='white', linewidth=0.5,
@@ -82,6 +114,7 @@ def panel(ax, data, key, show_ylabel):
     ax.set_xticks(np.arange(len(methods)))
     ax.set_xticklabels(methods, fontsize=8)
     ax.axhline(y=0, color='#eeeeee', linewidth=0.5)
+    ax.set_ylim(-0.5, Y_MAX)
     if show_ylabel:
         ax.set_ylabel('|Prevalence error| (percentage points)')
     ax.legend(loc='upper left', title='Scenario', title_fontsize=7, framealpha=0.95)
